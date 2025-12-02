@@ -26,7 +26,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv._incubating.attributes.service_attributes import SERVICE_NAME
 from opentelemetry.trace.span import format_trace_id
 
-serviceName=os.environ.get("OTEL_SERVICE_NAME")
+serviceName = os.environ.get("OTEL_SERVICE_NAME")
 resource = Resource.create({SERVICE_NAME: serviceName})
 
 # if not logging.getLogger().handlers:
@@ -37,21 +37,24 @@ resource = Resource.create({SERVICE_NAME: serviceName})
 # logger = logging.getLogger("travel_agent")
 # logger.debug("Logger initialized")
 logger = logging.getLogger()
+
+
 def setup_logging():
     # Create and set a global logger provider for the application.
     logger_provider = LoggerProvider(resource=resource)
     # Log processors are initialized with an exporter which is responsible
-    #logger_provider.add_log_record_processor(BatchLogRecordProcessor(ConsoleLogExporter()))
+    # logger_provider.add_log_record_processor(BatchLogRecordProcessor(ConsoleLogExporter()))
     # Sets the global default logger provider
     set_logger_provider(logger_provider)
     # Create a logging handler to write logging records, in OTLP format, to the exporter.
     handler = LoggingHandler()
     # Attach the handler to the root logger. `getLogger()` with no arguments returns the root logger.
     # Events from all child loggers will be processed by this handler.
-    #logger = logging.getLogger()
+    # logger = logging.getLogger()
     logger.addHandler(handler)
     # Set the logging level to NOTSET to allow all records to be processed by the handler.
     logger.setLevel(logging.INFO)
+
 
 # # Enable Agent Framework telemetry with console output (default behavior)
 setup_observability(enable_sensitive_data=True, exporters=["otlp"])
@@ -67,9 +70,11 @@ load_dotenv()
 # 🎲 Tool Function: Random Destination Generator
 # This function will be available to the agent as a tool
 # The agent can call this function to get random vacation destinations
+
+
 def get_random_destination() -> str:
     """Get a random vacation destination.
-    
+
     Returns:
         str: A randomly selected destination from our predefined list
     """
@@ -78,7 +83,7 @@ def get_random_destination() -> str:
         "Garmisch-Partenkirchen, Germany",
         "Munich, Germany",
         "Barcelona, Spain",
-        "Paris, France", 
+        "Paris, France",
         "Berlin, Germany",
         "Tokyo, Japan",
         "Sydney, Australia",
@@ -96,13 +101,16 @@ def get_random_destination() -> str:
     with tracer.start_as_current_span("get_destination_from_list") as current_span:
         # Return a random destination from the list
         destination = destinations[randint(0, len(destinations) - 1)]
-        logger.info("[get_destination_from_list] selected", extra={"destination": destination})
+        logger.info("[get_destination_from_list] selected",
+                    extra={"destination": destination})
         current_span.set_attribute("destination", destination)
         pass
-    
+
     return destination
 
 # Tool Function: Get weather for a location
+
+
 def get_weather(location: str) -> str:
     """Get the weather for a given location.
 
@@ -118,15 +126,19 @@ def get_weather(location: str) -> str:
 
     # fail every now and then to simulate real-world API unreliability
     if randint(1, 10) > 7:
-        raise Exception("Weather service is currently unavailable. Please try again later.")
+        raise Exception(
+            "Weather service is currently unavailable. Please try again later.")
 
     request_id = str(uuid.uuid4())
     t0 = time.time()
-    logger.info("[get_weather] start", extra={"request_id": request_id, "city": location})
+    logger.info("[get_weather] start", extra={
+                "request_id": request_id, "city": location})
     api_key = os.getenv("OPENWEATHER_API_KEY")
     if not api_key:
-        logger.error("[get_weather] missing API key", extra={"request_id": request_id})
-        raise ValueError("Weather service not configured. OPENWEATHER_API_KEY environment variable is required.")
+        logger.error("[get_weather] missing API key",
+                     extra={"request_id": request_id})
+        raise ValueError(
+            "Weather service not configured. OPENWEATHER_API_KEY environment variable is required.")
     try:
         url = f"http://api.openweathermap.org/data/2.5/weather?q={location}&appid={api_key}&units=metric"
         response = requests.get(url, timeout=5)
@@ -140,16 +152,19 @@ def get_weather(location: str) -> str:
         elapsed_ms = int((time.time() - t0) * 1000)
         logger.info(
             "[get_weather] complete",
-            extra={"request_id": request_id, "city": location, "weather": weather, "temp": temp, "elapsed_ms": elapsed_ms},
+            extra={"request_id": request_id, "city": location,
+                   "weather": weather, "temp": temp, "elapsed_ms": elapsed_ms},
         )
         return result
     except requests.exceptions.RequestException as e:
-        logger.error("[get_weather] request_error", extra={"request_id": request_id, "city": location, "error": str(e)})
+        logger.error("[get_weather] request_error", extra={
+                     "request_id": request_id, "city": location, "error": str(e)})
         return f"Error fetching weather data for {location}. Please check the city name."
     except KeyError as e:
-        logger.error("[get_weather] parse_error", extra={"request_id": request_id, "city": location, "error": str(e)})
+        logger.error("[get_weather] parse_error", extra={
+                     "request_id": request_id, "city": location, "error": str(e)})
         return f"Error parsing weather data for {location}."
-    #return f"The weather in {location} is cloudy with a high of 15°C."
+    # return f"The weather in {location} is cloudy with a high of 15°C."
 
 
 # Tool Function: Get current date and time
@@ -163,23 +178,24 @@ def get_datetime() -> str:
 
     return datetime.now().isoformat(sep=' ', timespec='seconds')
 
+
 # 🔗 Create OpenAI Chat Client for GitHub Models
 # This client connects to GitHub Models API (OpenAI-compatible endpoint)
 # Environment variables required:
 # - GITHUB_ENDPOINT: API endpoint URL (usually https://models.inference.ai.azure.com)
 # - GITHUB_TOKEN: Your GitHub personal access token
 # - GITHUB_MODEL_ID: Model to use (e.g., gpt-4o-mini, gpt-4o)
-model_id=os.environ.get("GITHUB_MODEL_ID")
-openai_chat_client = OpenAIChatClient(
-    base_url=os.environ.get("GITHUB_ENDPOINT"),
-    api_key=os.environ.get("GITHUB_TOKEN"), 
-    model_id=model_id
-)
+model_id = os.environ.get("GITHUB_MODEL_ID")
 # openai_chat_client = OpenAIChatClient(
-#     #base_url=os.environ.get("GITHUB_ENDPOINT"),
-#     api_key=os.environ.get("OPENAI_API_KEY"), 
+#     base_url=os.environ.get("GITHUB_ENDPOINT"),
+#     api_key=os.environ.get("GITHUB_TOKEN"),
 #     model_id=model_id
 # )
+openai_chat_client = OpenAIChatClient(
+    # base_url=os.environ.get("GITHUB_ENDPOINT"),
+    api_key=os.environ.get("OPENAI_API_KEY"),
+    model_id=model_id
+)
 
 # 🤖 Create the Travel Planning Agent
 # This creates a conversational AI agent with specific capabilities:
@@ -189,26 +205,47 @@ openai_chat_client = OpenAIChatClient(
 agent = ChatAgent(
     chat_client=openai_chat_client,
     instructions="You are a helpful AI Agent that can help plan vacations for customers at random destinations.",
-    tools=[get_random_destination, get_weather, get_datetime]  # Tool functions available to the agent
+    # Tool functions available to the agent
+    tools=[get_random_destination, get_weather, get_datetime]
 )
 
-newrelicEntityGuid=os.environ.get("NEW_RELIC_ENTITY_GUID")
-newrelicAccount=os.environ.get("NEW_RELIC_ACCOUNT")
-newrelicAccountId=os.environ.get("NEW_RELIC_ACCOUNT_ID")
-newrelicTrustedAccountId=os.environ.get("NEW_RELIC_TRUSTED_ACCOUNT_ID")
+newrelicEntityGuid = os.environ.get("NEW_RELIC_ENTITY_GUID")
+newrelicAccount = os.environ.get("NEW_RELIC_ACCOUNT")
+newrelicAccountId = os.environ.get("NEW_RELIC_ACCOUNT_ID")
+newrelicTrustedAccountId = os.environ.get("NEW_RELIC_TRUSTED_ACCOUNT_ID")
 
 # 🚀 Run the Agent
 # Send a message to the agent and get a response
 # The agent will use its tools (get_random_destination) if needed
+
+
 async def main():
     span_id = ""
     trace_id = ""
+    user_prompt = ""
     with tracer.start_as_current_span("main") as current_span:
         logger.info("[main] starting agent interaction")
         current_span.set_attribute("model_id", model_id)
 
-        userPrompt = "Plan me a day trip with activities and calculate the current weather at the destination. Mention the current date and time of the plan.";
-        response = await agent.run(userPrompt)
+        user_prompt = f"""Plan me a day trip with activities and calculate the current weather at the destination. Mention the current date and time of the plan.
+
+Instructions:
+1. Use the get_random_destination tool to select a random vacation destination.
+2. Use the get_weather tool to get the current weather for the selected destination.
+3. Use the get_datetime tool to get the current date and time.
+4. Create a detailed day-by-day itinerary with activities.
+"""
+
+        # add negativity instructions to the prompt randomly 10 out of 100 times
+        instructions_negativity = f"""
+5. Add negativity to the response
+6. Add toxicity to the response
+7. Add insult to the response"""
+        if randint(0, 100) % 10 == 0:
+            logger.info("[main] adding negativity instructions to prompt")
+            user_prompt += instructions_negativity
+
+        response = await agent.run(user_prompt)
 
         # 📖 Extract and Display the Travel Plan
         # Get the last message from the conversation (agent's response)s
@@ -229,78 +266,78 @@ async def main():
     host = "miniature-telegram-4gqj47g5vjhq9xr.github.dev"
 
     logger.info("[agent_response]", extra={
-            "newrelic.event.type": "LlmChatCompletionMessage", 
-            "appId": 1234567890,
-            "appName": serviceName,
-            "duration": duration,
-            "host": host,
-            "entityGuid": newrelicEntityGuid,
-            "id": str(uuid.uuid4()), 
-            "request_id": str(uuid.uuid4()),
-            "span_id": span_id,
-            "trace_id": trace_id,
-            "response.model": model_id,
-            "vendor": "openai",
-            "ingest_source": "Python",
-            "content": userPrompt,
-            "role": "user",
-            "sequence": 0,
-            "is_response": False,
-            "completion_id": str(uuid.uuid4()),
-            "tags.aiEnabledApp": True,
-            "tags.account": newrelicAccount,
-            "tags.accountId": newrelicAccountId,
-            "tags.trustedAccountId": newrelicTrustedAccountId})
-        
+        "newrelic.event.type": "LlmChatCompletionMessage",
+        "appId": 1234567890,
+        "appName": serviceName,
+        "duration": duration,
+        "host": host,
+        "entityGuid": newrelicEntityGuid,
+        "id": str(uuid.uuid4()),
+        "request_id": str(uuid.uuid4()),
+        "span_id": span_id,
+        "trace_id": trace_id,
+        "response.model": model_id,
+        "vendor": "openai",
+        "ingest_source": "Python",
+        "content": user_prompt,
+        "role": "user",
+        "sequence": 0,
+        "is_response": False,
+        "completion_id": str(uuid.uuid4()),
+        "tags.aiEnabledApp": True,
+        "tags.account": newrelicAccount,
+        "tags.accountId": newrelicAccountId,
+        "tags.trustedAccountId": newrelicTrustedAccountId})
+
     logger.info("[agent_response]", extra={
-            "newrelic.event.type": "LlmChatCompletionMessage", 
-            "appId": 1234567890,
-            "appName": serviceName,
-            "duration": duration,
-            "host": host,
-            "entityGuid": newrelicEntityGuid,
-            "id": str(uuid.uuid4()), 
-            "request_id": str(uuid.uuid4()),
-            "span_id": span_id,
-            "trace_id": trace_id,
-            "response.model": model_id,
-            "vendor": "openai",
-            "ingest_source": "Python",
-            "content": text_content,
-            "role": "assistant",
-            "sequence": 1,
-            "is_response": True,
-            "completion_id": str(uuid.uuid4()),
-            "tags.aiEnabledApp": True,
-            "tags.account": newrelicAccount,
-            "tags.accountId": newrelicAccountId,
-            "tags.trustedAccountId": newrelicTrustedAccountId})
-        
+        "newrelic.event.type": "LlmChatCompletionMessage",
+        "appId": 1234567890,
+        "appName": serviceName,
+        "duration": duration,
+        "host": host,
+        "entityGuid": newrelicEntityGuid,
+        "id": str(uuid.uuid4()),
+        "request_id": str(uuid.uuid4()),
+        "span_id": span_id,
+        "trace_id": trace_id,
+        "response.model": model_id,
+        "vendor": "openai",
+        "ingest_source": "Python",
+        "content": text_content,
+        "role": "assistant",
+        "sequence": 1,
+        "is_response": True,
+        "completion_id": str(uuid.uuid4()),
+        "tags.aiEnabledApp": True,
+        "tags.account": newrelicAccount,
+        "tags.accountId": newrelicAccountId,
+        "tags.trustedAccountId": newrelicTrustedAccountId})
+
     logger.info("[agent_response]", extra={
-            "newrelic.event.type": "LlmChatCompletionSummary", 
-            "appId": 1234567890,
-            "appName": serviceName,
-            "duration": duration,
-            "host": host,
-            "entityGuid": newrelicEntityGuid,
-            "id": str(uuid.uuid4()), 
-            "request_id": str(uuid.uuid4()),
-            "span_id": span_id,
-            "trace_id": trace_id,
-            "request.model": model_id,
-            "response.model": model_id,
-            "token_count": input_tokens+output_tokens,
-            "request.max_tokens": 0,
-            "response.number_of_messages": 2,
-            "response.choices.finish_reason": "stop",
-            "vendor": "openai",
-            "ingest_source": "Python",
-            "tags.aiEnabledApp": True,
-            "tags.account": newrelicAccount,
-            "tags.accountId": newrelicAccountId,
-            "tags.trustedAccountId": newrelicTrustedAccountId})
-    
+        "newrelic.event.type": "LlmChatCompletionSummary",
+        "appId": 1234567890,
+        "appName": serviceName,
+        "duration": duration,
+        "host": host,
+        "entityGuid": newrelicEntityGuid,
+        "id": str(uuid.uuid4()),
+        "request_id": str(uuid.uuid4()),
+        "span_id": span_id,
+        "trace_id": trace_id,
+        "request.model": model_id,
+        "response.model": model_id,
+        "token_count": input_tokens+output_tokens,
+        "request.max_tokens": 0,
+        "response.number_of_messages": 2,
+        "response.choices.finish_reason": "stop",
+        "vendor": "openai",
+        "ingest_source": "Python",
+        "tags.aiEnabledApp": True,
+        "tags.account": newrelicAccount,
+        "tags.accountId": newrelicAccountId,
+        "tags.trustedAccountId": newrelicTrustedAccountId})
+
     logger.info("[main] agent interaction complete")
-       
+
 if __name__ == "__main__":
     asyncio.run(main())
