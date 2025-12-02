@@ -1,0 +1,4 @@
+agent-framework-core
+streamlit
+requests
+python-dotenv
