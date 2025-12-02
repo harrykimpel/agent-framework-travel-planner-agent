@@ -39,6 +39,7 @@ jobs:
         #pytest
     - name: Test by running a script
       run: |
+        echo "Copy sample .env file"
         cp .env.example .env
         export NEGATIVITY_PROMPT_ENABLE=true
         ./run_non_web.sh
