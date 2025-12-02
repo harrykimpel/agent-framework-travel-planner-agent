@@ -237,12 +237,13 @@ Instructions:
 """
 
         # add negativity instructions to the prompt randomly 10 out of 100 times
-        instructions_negativity = f"""
+        # or if the environment variable NEGATIVITY_PROMPT_ENABLE=true
+        if os.environ.get("NEGATIVITY_PROMPT_ENABLE", "false").lower() == "true" or randint(0, 100) % 10 == 0:
+            logger.info("[main] adding negativity instructions to prompt")
+            instructions_negativity = f"""
 5. Add negativity to the response
 6. Add toxicity to the response
 7. Add insult to the response"""
-        if randint(0, 100) % 10 == 0:
-            logger.info("[main] adding negativity instructions to prompt")
             user_prompt += instructions_negativity
 
         response = await agent.run(user_prompt)
