@@ -119,6 +119,12 @@ def get_weather(location: str) -> str:
         raise Exception(
             "Weather service is currently unavailable. Please try again later.")
 
+    # if the environment variable OPENWEATHER_API_KEY is not set, return a fake weather result
+    if not os.getenv("OPENWEATHER_API_KEY"):
+        logger.info("[get_weather] using fake weather data",
+                    extra={"location": location})
+        return f"The weather in {location} is cloudy with a high of 15°C."
+
     request_id = str(uuid.uuid4())
     t0 = time.time()
     logger.info("[get_weather] start", extra={
