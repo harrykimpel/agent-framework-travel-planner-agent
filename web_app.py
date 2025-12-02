@@ -85,7 +85,7 @@ DESTINATIONS = {
 
 
 def get_selected_destination(destination: str) -> str:
-    """Return the selected destination.
+    """Return the selected destination for verification.
 
     Args:
         destination: The selected destination
@@ -312,11 +312,12 @@ Interests: {interests_str}
 
 Please provide:
 1. A detailed day-by-day itinerary with activities
-2. Current weather information for the destination
-3. Local cuisine recommendations
-4. Best times to visit specific attractions
-5. Travel tips and budget estimates
-6. Current date and time reference"""
+2. Verification of the selected destination
+3. Current weather information for the destination
+4. Local cuisine recommendations
+5. Best times to visit specific attractions
+6. Travel tips and budget estimates
+7. Current date and time reference"""
 
             with tracer.start_as_current_span("plan_generation") as current_span:
                 logger.info("[plan_generation] starting", extra={
