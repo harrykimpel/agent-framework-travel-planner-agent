@@ -42,6 +42,13 @@ load_dotenv()
 serviceName = os.environ.get("OTEL_SERVICE_NAME", "travel-planner-web")
 resource = Resource.create({SERVICE_NAME: serviceName})
 
+model_id = os.environ.get("GITHUB_MODEL_ID", "gpt-4o-mini")
+
+newrelicEntityGuid=os.environ.get("NEW_RELIC_ENTITY_GUID")
+newrelicAccount=os.environ.get("NEW_RELIC_ACCOUNT")
+newrelicAccountId=os.environ.get("NEW_RELIC_ACCOUNT_ID")
+newrelicTrustedAccountId=os.environ.get("NEW_RELIC_TRUSTED_ACCOUNT_ID")
+
 logger = logging.getLogger()
 
 def setup_logging():
@@ -146,13 +153,16 @@ def get_datetime() -> str:
     time.sleep(delay_seconds)
     return datetime.now().isoformat(sep=' ', timespec='seconds')
 
-
 # ⚙️ Initialize Streamlit Session State
 if "agent" not in st.session_state:
-    model_id = os.environ.get("GITHUB_MODEL_ID", "gpt-4o-mini")
+    # openai_chat_client = OpenAIChatClient(
+    #     base_url=os.environ.get("GITHUB_ENDPOINT"),
+    #     api_key=os.environ.get("GITHUB_TOKEN"),
+    #     model_id=model_id
+    # )
     openai_chat_client = OpenAIChatClient(
-        base_url=os.environ.get("GITHUB_ENDPOINT"),
-        api_key=os.environ.get("GITHUB_TOKEN"),
+        #base_url=os.environ.get("GITHUB_ENDPOINT"),
+        api_key=os.environ.get("OPENAI_API_KEY"), 
         model_id=model_id
     )
     
@@ -453,13 +463,12 @@ st.markdown("---")
 if st.button("🚀 Generate My Travel Plan", use_container_width=True, type="primary"):
     with st.spinner("✨ Planning your amazing trip..."):
         try:
-            with tracer.start_as_current_span("plan_generation") as current_span:
-                # Build the prompt with selected options
-                interests_str = ", ".join(interests) if interests else "general sightseeing"
-                special_requests_str = f"\nSpecial requests: {special_requests}" if special_requests else ""
-                
-                user_prompt = f"""Plan a {trip_duration}-day trip to {selected_destination}.
-
+            span_id = ""
+            trace_id = ""
+            # Build the prompt with selected options
+            interests_str = ", ".join(interests) if interests else "general sightseeing"
+            special_requests_str = f"\nSpecial requests: {special_requests}" if special_requests else ""
+            user_prompt = f"""Plan a {trip_duration}-day trip to {selected_destination}.
 Interests: {interests_str}
 {special_requests_str}
 
@@ -471,6 +480,7 @@ Please provide:
 5. Travel tips and budget estimates
 6. Current date and time reference"""
 
+            with tracer.start_as_current_span("plan_generation") as current_span:
                 logger.info("[plan_generation] starting", extra={"destination": selected_destination, "duration": trip_duration})
                 current_span.set_attribute("destination", selected_destination)
                 current_span.set_attribute("duration", trip_duration)
@@ -494,6 +504,84 @@ Please provide:
                     "trace_id": trace_id,
                     "model": st.session_state.model_id
                 })
+
+            input_tokens = response.usage_details.input_token_count
+            output_tokens = response.usage_details.output_token_count
+            response_id = response.response_id
+            duration = (current_span.end_time - current_span.start_time) / 100000
+            host = "miniature-telegram-4gqj47g5vjhq9xr.github.dev"
+
+            logger.info("[agent_response]", extra={
+                    "newrelic.event.type": "LlmChatCompletionMessage", 
+                    "appId": 1234567890,
+                    "appName": serviceName,
+                    "duration": duration,
+                    "host": host,
+                    "entityGuid": newrelicEntityGuid,
+                    "id": str(uuid.uuid4()), 
+                    "request_id": str(uuid.uuid4()),
+                    "span_id": span_id,
+                    "trace_id": trace_id,
+                    "response.model": model_id,
+                    "vendor": "openai",
+                    "ingest_source": "Python",
+                    "content": user_prompt,
+                    "role": "user",
+                    "sequence": 0,
+                    "is_response": False,
+                    "completion_id": str(uuid.uuid4()),
+                    "tags.aiEnabledApp": True,
+                    "tags.account": newrelicAccount,
+                    "tags.accountId": newrelicAccountId,
+                    "tags.trustedAccountId": newrelicTrustedAccountId})
+                
+            logger.info("[agent_response]", extra={
+                    "newrelic.event.type": "LlmChatCompletionMessage", 
+                    "appId": 1234567890,
+                    "appName": serviceName,
+                    "duration": duration,
+                    "host": host,
+                    "entityGuid": newrelicEntityGuid,
+                    "id": str(uuid.uuid4()), 
+                    "request_id": str(uuid.uuid4()),
+                    "span_id": span_id,
+                    "trace_id": trace_id,
+                    "response.model": model_id,
+                    "vendor": "openai",
+                    "ingest_source": "Python",
+                    "content": text_content,
+                    "role": "assistant",
+                    "sequence": 1,
+                    "is_response": True,
+                    "completion_id": str(uuid.uuid4()),
+                    "tags.aiEnabledApp": True,
+                    "tags.account": newrelicAccount,
+                    "tags.accountId": newrelicAccountId,
+                    "tags.trustedAccountId": newrelicTrustedAccountId})
+                
+            logger.info("[agent_response]", extra={
+                    "newrelic.event.type": "LlmChatCompletionSummary", 
+                    "appId": 1234567890,
+                    "appName": serviceName,
+                    "duration": duration,
+                    "host": host,
+                    "entityGuid": newrelicEntityGuid,
+                    "id": str(uuid.uuid4()), 
+                    "request_id": str(uuid.uuid4()),
+                    "span_id": span_id,
+                    "trace_id": trace_id,
+                    "request.model": model_id,
+                    "response.model": model_id,
+                    "token_count": input_tokens+output_tokens,
+                    "request.max_tokens": 0,
+                    "response.number_of_messages": 2,
+                    "response.choices.finish_reason": "stop",
+                    "vendor": "openai",
+                    "ingest_source": "Python",
+                    "tags.aiEnabledApp": True,
+                    "tags.account": newrelicAccount,
+                    "tags.accountId": newrelicAccountId,
+                    "tags.trustedAccountId": newrelicTrustedAccountId})
                 
         except Exception as e:
             st.error(f"❌ An error occurred: {str(e)}")
