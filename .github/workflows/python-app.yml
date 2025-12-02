@@ -37,6 +37,8 @@ jobs:
     - name: Test with pytest
       run: |
         #pytest
+    - name: Test by running a script
+      run: |
         cp .env.example .env
         export NEGATIVITY_PROMPT_ENABLE=true
         ./run_non_web.sh
