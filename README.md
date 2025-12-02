@@ -2,6 +2,8 @@
 
 A beautiful, AI-powered travel planning web application built with Streamlit and the Microsoft Agent Framework. This sample demonstrates how to build interactive AI-driven applications with real-time observability using New Relic.
 
+![AI Travel Planner](web_app.png)
+
 ## 🌍 Features
 
 - **Destination Selection**: Choose from 12 curated travel destinations with rich descriptions

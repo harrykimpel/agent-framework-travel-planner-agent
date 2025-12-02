@@ -2,6 +2,8 @@
 
 This document provides sample prompts, expected outputs, and tips to get the best results from the AI Travel Planner.
 
+![Garmisch-Partenkirchen example](example-gap.png)
+
 ## Quick Usage Examples
 
 ### Example 1 — Weekend in Barcelona
