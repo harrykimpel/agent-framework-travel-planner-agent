@@ -12,7 +12,7 @@ import uuid
 
 # Flask imports for web application
 from flask import Flask, render_template, request, jsonify
-from flask_cors import CORS
+#from flask_cors import CORS
 
 # Third-party library for loading environment variables from .env file
 from dotenv import load_dotenv
@@ -24,7 +24,6 @@ from agent_framework import ChatAgent
 from agent_framework.openai import OpenAIChatClient
 from agent_framework.observability import setup_observability, get_tracer, get_meter
 
-from opentelemetry._logs import set_logger_provider
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv._incubating.attributes.service_attributes import SERVICE_NAME
@@ -42,31 +41,68 @@ newrelicAccount = os.environ.get("NEW_RELIC_ACCOUNT")
 newrelicAccountId = os.environ.get("NEW_RELIC_ACCOUNT_ID")
 newrelicTrustedAccountId = os.environ.get("NEW_RELIC_TRUSTED_ACCOUNT_ID")
 
-logger = logging.getLogger()
+# Create named logger for application logs (before getting root logger)
+app_logger = logging.getLogger("travel_planner")
+app_logger.setLevel(logging.INFO)
 
+# Enable Agent Framework telemetry with OTLP exporter
+# Workaround: The agent framework's _get_otlp_exporters() doesn't pass headers
+# when endpoint is explicitly provided. We create exporters manually with headers.
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 
-def setup_logging():
-    # Create and set a global logger provider for the application.
-    logger_provider = LoggerProvider(resource=resource)
-    # Sets the global default logger provider
-    set_logger_provider(logger_provider)
-    # Create a logging handler to write logging records, in OTLP format, to the exporter.
-    handler = LoggingHandler()
-    # Attach the handler to the root logger.
-    logger.addHandler(handler)
-    # Set the logging level to NOTSET to allow all records to be processed by the handler.
-    logger.setLevel(logging.INFO)
+# Create OTLP exporters that will auto-read endpoint and headers from environment
+# (OTEL_EXPORTER_OTLP_ENDPOINT and OTEL_EXPORTER_OTLP_HEADERS)
+otlp_exporters = [
+    OTLPSpanExporter(),  # Reads from OTEL_EXPORTER_OTLP_* env vars
+    OTLPMetricExporter(),  # Reads from OTEL_EXPORTER_OTLP_* env vars
+    OTLPLogExporter(),  # Reads from OTEL_EXPORTER_OTLP_* env vars
+]
 
-
-# Enable Agent Framework telemetry with console output (default behavior)
-setup_observability(enable_sensitive_data=True, exporters=["otlp"])
-setup_logging()
+setup_observability(
+    enable_sensitive_data=True,
+    exporters=otlp_exporters
+)
 tracer = get_tracer()
 meter = get_meter()
 
+# Workaround: Replace ConsoleLogExporter with OTLPLogExporter
+# The framework incorrectly checks for LogExporter type instead of LogRecordExporter,
+# so it adds a ConsoleLogExporter even though we provided OTLPLogExporter.
+# We need to replace the console exporter with our OTLP exporter.
+from opentelemetry._logs import get_logger_provider, set_logger_provider
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+
+# Create a fresh logger provider with only OTLP exporter
+logger_provider = LoggerProvider(resource=resource)
+otlp_log_exporter = [e for e in otlp_exporters if type(e).__name__ == 'OTLPLogExporter'][0]
+logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
+
+# Get root logger to configure all loggers
+root_logger = logging.getLogger()
+
+# Remove old handlers and add new one with proper OTLP configuration
+for handler in root_logger.handlers[:]:
+    if isinstance(handler, LoggingHandler):
+        root_logger.removeHandler(handler)
+
+# Add new LoggingHandler to root logger (this will capture all loggers including Flask)
+handler = LoggingHandler(logger_provider=logger_provider)
+root_logger.addHandler(handler)
+root_logger.setLevel(logging.INFO)
+set_logger_provider(logger_provider)
+
+# Also attach to our named app logger explicitly
+app_logger.addHandler(handler)
+
+# Create a reference for backward compatibility
+logger = app_logger
+
 # 🌐 Initialize Flask Application
 app = Flask(__name__)
-CORS(app)  # Enable CORS for API requests
+#CORS(app)  # Enable CORS for API requests
 
 # 🎲 Tool Function: Random Destination Generator
 # This function will be available to the agent as a tool
@@ -248,6 +284,8 @@ def index():
 @app.route('/plan', methods=['POST'])
 def plan_trip():
     """Generate a travel plan based on user input."""
+    logger.info("[plan_trip] received request")
+    
     try:
         # Extract form data
         origin = request.form.get('origin', 'Unknown')
@@ -474,4 +512,4 @@ async def run_agent(user_prompt: str):
 
 if __name__ == "__main__":
     # Run Flask application
-    app.run(debug=True, host='0.0.0.0', port=5002)
+    app.run(debug=False, host='0.0.0.0', port=5002)
