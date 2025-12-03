@@ -94,6 +94,23 @@ def get_random_destination() -> str:
 
     return destination
 
+def get_selected_destination(destination: str) -> str:
+    """Return the selected destination for verification.
+
+    Args:
+        destination: The selected destination
+    Returns:
+        str: Confirmation of the selected destination
+    """
+    delay_seconds = uniform(0, 0.99)
+    time.sleep(delay_seconds)
+
+    with tracer.start_as_current_span("get_selected_destination") as current_span:
+        logger.info("[get_selected_destination] selected",
+                    extra={"destination": destination})
+        current_span.set_attribute("destination", destination)
+
+    return destination
 
 # 🌏 Predefined Destinations with Descriptions
 DESTINATIONS = {
@@ -193,6 +210,11 @@ def get_datetime() -> str:
 # - OPENAI_API_KEY: Your OpenAI API key
 # - GITHUB_MODEL_ID: Model to use (e.g., gpt-4o-mini, gpt-4o)
 model_id = os.environ.get("GITHUB_MODEL_ID", "gpt-4o-mini")
+# openai_chat_client = OpenAIChatClient(
+    #     base_url=os.environ.get("GITHUB_ENDPOINT"),
+    #     api_key=os.environ.get("GITHUB_TOKEN"),
+    #     model_id=model_id
+    # )
 openai_chat_client = OpenAIChatClient(
     api_key=os.environ.get("OPENAI_API_KEY"),
     model_id=model_id
@@ -207,7 +229,7 @@ agent = ChatAgent(
     chat_client=openai_chat_client,
     instructions="You are a helpful AI Agent that can help plan vacations for customers at random destinations.",
     # Tool functions available to the agent
-    tools=[get_random_destination, get_weather, get_datetime]
+    tools=[get_selected_destination, get_weather, get_datetime]
 )
 
 newrelicEntityGuid = os.environ.get("NEW_RELIC_ENTITY_GUID")
@@ -247,10 +269,13 @@ Trip Details:
 - Special Requests: {special_requests if special_requests else 'None'}
 
 Instructions:
-1. Use the get_weather tool to get the current weather for {destination}.
-2. Use the get_datetime tool to get the current date and time.
-3. Create a detailed day-by-day itinerary with activities tailored to the interests.
-4. Include practical tips and recommendations.
+1. A detailed day-by-day itinerary with activities tailored to the interests
+2. Verification of the selected destination
+3. Current weather information for the destination
+4. Local cuisine recommendations
+5. Best times to visit specific attractions
+6. Travel tips and budget estimates
+7. Current date and time reference
 """
 
         # Run the agent asynchronously
@@ -299,10 +324,13 @@ Trip Details:
 - Special Requests: {special_requests if special_requests else 'None'}
 
 Instructions:
-1. Use the get_weather tool to get the current weather for {destination}.
-2. Use the get_datetime tool to get the current date and time.
-3. Create a detailed day-by-day itinerary with activities tailored to the interests.
-4. Include practical tips and recommendations.
+1. A detailed day-by-day itinerary with activities tailored to the interests
+2. Verification of the selected destination
+3. Current weather information for the destination
+4. Local cuisine recommendations
+5. Best times to visit specific attractions
+6. Travel tips and budget estimates
+7. Current date and time reference
 """
 
         # Run the agent asynchronously
