@@ -37,10 +37,20 @@ jobs:
     - name: Test with pytest
       run: |
         #pytest
+
+    # Example: set secrets and variables only for this step
     - name: Test by running a script
+      # set secrets and non-secret variables here
+      env:
+        # Replace OPENAI_API_KEY with the name of the secret you create in the repo settings:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        # You can create a non-secret repository variable (or set as string here)
+        NEGATIVITY_PROMPT_ENABLE: "true"
       run: |
-        #echo "Copy sample .env file"
-        cp .env.example .env
-        export OPENAI_API_KEY=${{ secrets.SuperSecret }}
-        export NEGATIVITY_PROMPT_ENABLE=true
+        # If your project expects a .env file, create it from .env.example and
+        # inject the sensitive variables from the environment (they won't be printed)
+        cp .env.example .env || true
+        # Append or overwrite values (avoid echoing secrets to logs)
+        echo "OPENAI_API_KEY=${OPENAI_API_KEY}" >> .env
+        echo "NEGATIVITY_PROMPT_ENABLE=${NEGATIVITY_PROMPT_ENABLE}" >> .env
         ./run_non_web.sh
