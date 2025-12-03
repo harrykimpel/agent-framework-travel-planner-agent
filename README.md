@@ -1,192 +1,218 @@
-# ✈️ AI Travel Planner - New Relic DevRel Sample
+# 🌐 Flask Web Application Guide
 
-A beautiful, AI-powered travel planning web application built with Streamlit and the Microsoft Agent Framework. This sample demonstrates how to build interactive AI-driven applications with real-time observability using New Relic.
+## Overview
 
-![AI Travel Planner](web_app.png)
+The Travel Planner has been converted from a CLI application to a beautiful Flask-based web application with a modern, responsive UI featuring the New Relic theme.
 
-## 🌍 Features
+## ✨ Features
 
-- **Destination Selection**: Choose from 12 curated travel destinations with rich descriptions
-- **Customizable Trip Planning**:
-  - Adjust trip duration (1-14 days)
-  - Select travel interests (Beach, Culture, Food, Adventure, Shopping, Art)
-  - Add special requests or requirements
-- **AI-Powered Itineraries**: Generate detailed day-by-day travel plans using AI agents
-- **Real-time Weather Integration**: Fetch current weather data for destinations
-- **New Relic Branding**: Modern UI with New Relic's signature green color palette (#00ce7c, #00FF8C, #00AC69)
-- **Full Observability**: Integrated with New Relic telemetry for performance monitoring and tracing
-- **Download Plans**: Export generated travel plans as text files
+### Web Interface
 
-## 🚀 Getting Started
+- **Beautiful Modern UI**: Clean, responsive design with New Relic branding
+- **Interactive Form**: User-friendly travel planning form with:
+  - Origin and destination selection
+  - Date picker with calendar
+  - Trip duration selector
+  - Multi-select interests
+  - Special requests text area
+- **Real-time Feedback**: Loading indicators while AI generates plans
+- **Result Display**: Formatted travel plans with easy-to-read layout
+- **Error Handling**: Graceful error messages with retry options
 
-### Prerequisites
+### API Endpoints
 
-- Python 3.8+
-- GitHub Models API access (for AI model)
-- OpenWeather API key (for weather data)
-- New Relic account (optional, for observability)
+- `GET /` - Home page with travel planning form
+- `POST /plan` - Generate travel plan (returns HTML)
+- `POST /api/plan` - Generate travel plan (returns JSON for API consumers)
 
-### Installation
+## 🚀 Quick Start
 
-1. Clone or navigate to this repository:
-
-```bash
-cd travel-planner-agent
-```
-
-2. Create and activate a virtual environment:
-
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
+### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Configuration
+### 2. Set Environment Variables
 
-Create a `.env` file in the project root with your API keys:
+Ensure your `.env` file contains:
 
-```env
-# GitHub Models API
-GITHUB_ENDPOINT=https://models.inference.ai.azure.com
-GITHUB_TOKEN=your_github_token_here
+```bash
+OPENAI_API_KEY=your_openai_api_key
 GITHUB_MODEL_ID=gpt-4o-mini
-
-# Weather API
-OPENWEATHER_API_KEY=your_openweather_api_key_here
-
-# New Relic (optional)
 OTEL_SERVICE_NAME=travel-planner-web
+# Optional: for real weather data
+OPENWEATHER_API_KEY=your_weather_api_key
+# Optional: New Relic configuration
 NEW_RELIC_ENTITY_GUID=your_entity_guid
-NEW_RELIC_ACCOUNT=your_account_name
+NEW_RELIC_ACCOUNT=your_account
 NEW_RELIC_ACCOUNT_ID=your_account_id
 NEW_RELIC_TRUSTED_ACCOUNT_ID=your_trusted_account_id
 ```
 
-### Running the App
+### 3. Run the Web Application
 
-Start the Streamlit web application using the provided shell script:
-
-```bash
-./run.sh
-```
-
-Alternatively, you can run Streamlit directly:
+**Option A: Using the run script (recommended)**
 
 ```bash
-streamlit run web_app.py
+./run_web.sh
 ```
 
-The app will open at `http://localhost:8501`
+**Option B: Direct Python execution**
+
+```bash
+python app.py
+```
+
+### 4. Access the Application
+
+Open your browser and navigate to:
+
+```
+http://localhost:5000
+```
 
 ## 📁 Project Structure
 
 ```
 travel-planner-agent/
-├── web_app.py              # Main Streamlit web application
-├── app.py                  # Original CLI-based agent script
-├── requirements.txt        # Python dependencies
-├── .env                    # Environment variables (create this)
-├── .env.example            # Example environment file
+├── app.py                 # Flask application (converted from CLI)
+├── requirements.txt       # Python dependencies (Flask added)
+├── run_web.sh            # Script to run the web app
+├── templates/
+│   ├── index.html        # Main form page
+│   ├── result.html       # Travel plan display page
+│   └── error.html        # Error page
 ├── static/
+│   ├── styles.css        # Enhanced CSS with responsive design
 │   └── assets/
-│       └── newrelic-logo.png   # New Relic logo (embedded in header)
-├── run.sh                  # Shell script to run the app
-└── README.md              # This file
+│       └── newrelic-logo.png
+└── .env                  # Environment variables
 ```
 
-## 🎯 How It Works
+## 🎨 UI Features
 
-1. **User Input**: Select a destination and customize your trip preferences
-2. **AI Agent Processing**: The Microsoft Agent Framework processes your request
-3. **Tool Execution**: The agent calls tools to:
-   - Confirm the selected destination
-   - Fetch current weather data
-   - Get current date/time
-4. **Plan Generation**: AI generates a detailed, personalized travel itinerary
-5. **Display & Download**: View the plan in the web UI or download as text
+### Design Highlights
 
-## 🛠️ Technology Stack
+- **New Relic Branding**: Consistent use of New Relic colors (#00AC69, #00ce7c, #00FF8C)
+- **Gradient Backgrounds**: Modern gradient effects throughout
+- **Smooth Animations**: Hover effects and transitions
+- **Responsive Layout**: Works on desktop, tablet, and mobile
+- **Accessibility**: Proper labels, focus states, and semantic HTML
 
-- **Frontend**: Streamlit (Python web framework)
-- **AI**: Microsoft Agent Framework + GitHub Models (GPT-4o-mini)
-- **APIs**: OpenWeather API, GitHub Models API
-- **Observability**: New Relic + OpenTelemetry (OTLP)
-- **Styling**: Custom CSS with New Relic brand colors
+### Form Features
 
-## 🎨 New Relic Color Scheme
+- **Smart Defaults**: Today's date pre-selected
+- **Input Validation**: Required fields marked and validated
+- **Multiple Selections**: Easy multi-select for interests
+- **Loading State**: Visual feedback during AI processing
 
-The application uses New Relic's official color palette:
+## 🔌 API Usage
 
-- **Primary Green**: `#00ce7c`
-- **Accent Green**: `#00FF8C`
-- **Dark Green**: `#00AC69`
+### HTTP API Example
 
-All UI components (buttons, sliders, headers, footers) are themed with these colors for a cohesive brand experience.
+```bash
+curl -X POST http://localhost:5000/api/plan \
+  -H "Content-Type: application/json" \
+  -d '{
+    "origin": "New York, USA",
+    "destination": "Paris, France",
+    "date": "2025-12-15",
+    "duration": "5",
+    "interests": ["Culture & History", "Food & Dining"],
+    "special_requests": "Looking for romantic spots"
+  }'
+```
 
-## 📊 Observability & Telemetry
+### Response Format
 
-The app integrates with New Relic for:
+```json
+{
+  "success": true,
+  "travel_plan": "Detailed AI-generated travel plan...",
+  "destination": "Paris, France",
+  "duration": "5"
+}
+```
 
-- **Distributed Tracing**: Track agent execution spans across the application
-- **Custom Metrics**: Monitor trip planning requests and response times
-- **Logging**: Structured logs for debugging and monitoring
-- **Service Observability**: Real-time performance insights
+## 🛠️ Development
 
-Telemetry data is exported via OpenTelemetry Protocol (OTLP) to New Relic.
+### Running in Debug Mode
 
-## 🔧 Troubleshooting
+The Flask app runs with `debug=True` by default in development:
 
-### Logo not displaying
+```python
+app.run(debug=True, host='0.0.0.0', port=5000)
+```
 
-- Ensure `static/assets/newrelic-logo.png` exists
-- The app embeds the logo as base64, so file path resolution is automatic
+### Customization
 
-### Slider colors not applying
+- **Colors**: Update CSS variables in `styles.css`
+- **Destinations**: Modify `DESTINATIONS` dict in `app.py`
+- **Agent Instructions**: Update the agent prompt in the route handlers
 
-- Streamlit version differences may affect CSS selectors; the app includes fallbacks
-- Refresh the page (F5) to apply latest CSS
+## 📝 Migration from CLI
 
-### Weather data not fetching
+### Key Changes
 
-- Verify your `OPENWEATHER_API_KEY` is valid
-- Check that the city name matches OpenWeather's database
-- The app includes error handling for API unavailability
+1. **Added Flask Framework**: Web server with routing
+2. **Created Templates**: HTML pages for UI
+3. **Enhanced Styling**: Responsive CSS with New Relic theme
+4. **Added CORS**: Support for API consumption
+5. **Async Handling**: Event loop management for Flask
+6. **Form Processing**: Extract data from POST requests
+7. **Error Handling**: User-friendly error pages
 
-### AI responses slow or failing
+### Preserved Features
 
-- Check GitHub Models API credentials and token validity
-- Ensure your GitHub token has appropriate scopes
-- Review New Relic logs for detailed error traces
+- ✅ Microsoft Agent Framework integration
+- ✅ OpenAI/GitHub Models support
+- ✅ Weather API integration
+- ✅ OpenTelemetry observability
+- ✅ New Relic logging
+- ✅ All tool functions (get_weather, get_datetime, get_random_destination)
 
-## 📝 Environment Variables Reference
+## 🌟 Usage Tips
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `GITHUB_ENDPOINT` | GitHub Models API endpoint | `https://models.inference.ai.azure.com` |
-| `GITHUB_TOKEN` | GitHub personal access token | `ghp_xxx...` |
-| `GITHUB_MODEL_ID` | Model to use | `gpt-4o-mini` |
-| `OPENWEATHER_API_KEY` | OpenWeather API key | `abc123...` |
-| `OTEL_SERVICE_NAME` | Service name for observability | `travel-planner-web` |
-| `NEW_RELIC_ENTITY_GUID` | New Relic entity identifier | `MjU0NjkwNDp...` |
+1. **Select Multiple Interests**: Hold Ctrl (Windows/Linux) or Cmd (Mac) to select multiple interests
+2. **Date Selection**: Click the calendar icon for easy date picking
+3. **Loading Time**: AI generation typically takes 10-30 seconds depending on complexity
+4. **Special Requests**: Use this field for budget constraints, accessibility needs, or specific preferences
+5. **Error Recovery**: If something fails, use the "Try Again" button to return to the form
 
-## 🤝 Contributing
+## 🔒 Security Notes
 
-This is a DevRel sample project. Feel free to fork, modify, and use as a template for your own AI-powered applications.
+- API keys are loaded from environment variables
+- CORS is enabled for API endpoints
+- Input validation on both client and server side
+- Error messages don't expose sensitive information
 
-## 📄 License
+## 🐛 Troubleshooting
 
-This project is part of the New Relic DevRel AI Samples collection.
+**Port Already in Use**
 
-## 🔗 Resources
+```bash
+# Find and kill the process using port 5000
+lsof -ti:5000 | xargs kill -9
+```
 
+**Module Not Found**
+
+```bash
+pip install --upgrade -r requirements.txt
+```
+
+**Weather API Errors**
+
+- The app works without OPENWEATHER_API_KEY (uses fake data)
+- Set the key in .env for real weather data
+
+## 📚 Additional Resources
+
+- [Flask Documentation](https://flask.palletsprojects.com/)
 - [Microsoft Agent Framework](https://github.com/microsoft/agent-framework)
-- [GitHub Models API](https://docs.github.com/en/github-models)
-- [Streamlit Documentation](https://docs.streamlit.io)
-- [New Relic Observability](https://newrelic.com)
-- [OpenTelemetry](https://opentelemetry.io)
+- [New Relic Python Agent](https://docs.newrelic.com/docs/apm/agents/python-agent/)
+
+## 🎉 Enjoy
+
+Your CLI application is now a beautiful, modern web application! Visit <http://localhost:5000> to start planning trips with AI.

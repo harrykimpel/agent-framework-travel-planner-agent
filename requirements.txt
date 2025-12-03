@@ -1,4 +1,5 @@
 agent-framework-core
-streamlit
+flask
+flask-cors
 requests
 python-dotenv
