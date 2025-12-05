@@ -65,6 +65,31 @@ setup_logging()
 tracer = get_tracer()
 meter = get_meter()
 
+# Create custom counters and histograms
+request_counter = meter.create_counter(
+    name="travel_plan.requests.total",
+    description="Total number of travel plan requests",
+    unit="1"
+)
+
+response_time_histogram = meter.create_histogram(
+    name="travel_plan.response_time_ms",
+    description="Travel plan response time in milliseconds",
+    unit="ms"
+)
+
+error_counter = meter.create_counter(
+    name="travel_plan.errors.total",
+    description="Total number of errors",
+    unit="1"
+)
+
+tool_call_counter = meter.create_counter(
+    name="travel_plan.tool_calls.total",
+    description="Number of tool calls by tool name",
+    unit="1"
+)
+
 # 🌏 Predefined Destinations with Descriptions
 DESTINATIONS = {
     "Garmisch-Partenkirchen, Germany": "🏔️ Alpine village with stunning mountain views",
@@ -100,6 +125,9 @@ def get_selected_destination(destination: str) -> str:
                     extra={"destination": destination})
         current_span.set_attribute("destination", destination)
 
+    tool_call_counter.add(1, {"tool_name": "get_selected_destination"})
+    request_counter.add(1, {"destination": destination})
+
     return destination
 
 
@@ -114,8 +142,11 @@ def get_weather(location: str) -> str:
     delay_seconds = uniform(0.3, 3.7)
     time.sleep(delay_seconds)
 
+    tool_call_counter.add(1, {"tool_name": "get_weather"})
+
     # Fail every now and then to simulate real-world API unreliability
     if __import__('random').randint(1, 10) > 7:
+        error_counter.add(1, {"error_type": "API unreliability"})
         raise Exception(
             "Weather service is currently unavailable. Please try again later.")
 
@@ -134,6 +165,7 @@ def get_weather(location: str) -> str:
     if not api_key:
         logger.error("[get_weather] missing API key",
                      extra={"request_id": request_id})
+        error_counter.add(1, {"error_type": "MissingAPIKey"})
         raise ValueError(
             "Weather service not configured. OPENWEATHER_API_KEY environment variable is required.")
 
@@ -157,10 +189,12 @@ def get_weather(location: str) -> str:
     except requests.exceptions.RequestException as e:
         logger.error("[get_weather] request_error", extra={
                      "request_id": request_id, "city": location, "error": str(e)})
+        error_counter.add(1, {"error_type": type(e).__name__})
         return f"Error fetching weather data for {location}. Please check the city name."
     except KeyError as e:
         logger.error("[get_weather] parse_error", extra={
                      "request_id": request_id, "city": location, "error": str(e)})
+        error_counter.add(1, {"error_type": type(e).__name__})
         return f"Error parsing weather data for {location}."
 
 
@@ -168,6 +202,7 @@ def get_datetime() -> str:
     """Return the current date and time as an ISO-like string."""
     delay_seconds = uniform(0.10, 5.0)
     time.sleep(delay_seconds)
+    tool_call_counter.add(1, {"tool_name": "get_datetime"})
     return datetime.now().isoformat(sep=' ', timespec='seconds')
 
 
@@ -358,6 +393,7 @@ Please provide:
             response_id = response.response_id
             duration = (current_span.end_time -
                         current_span.start_time) / 100000
+            response_time_histogram.record(duration, {"model_id": model_id})
             host = "miniature-telegram-4gqj47g5vjhq9xr.github.dev"
 
             logger.info("[agent_response]", extra={
@@ -434,6 +470,7 @@ Please provide:
 
         except Exception as e:
             st.error(f"❌ An error occurred: {str(e)}")
+            error_counter.add(1, {"error_type": type(e).__name__})
             logger.error("[plan_generation] error", extra={"error": str(e)})
 
 # 📋 Display Travel Plan
