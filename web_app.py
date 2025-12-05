@@ -171,7 +171,6 @@ def get_random_destination() -> str:
         logger.info("[get_destination_from_list] selected",
                     extra={"destination": destination})
         current_span.set_attribute("destination", destination)
-        request_counter.add(1, {"destination": destination})
 
     return destination
 
@@ -192,6 +191,8 @@ def get_selected_destination(destination: str) -> str:
         current_span.set_attribute("destination", destination)
 
     tool_call_counter.add(1, {"tool_name": "get_selected_destination"})
+    request_counter.add(1, {"destination": destination})
+
     return destination
 
 # 🌏 Predefined Destinations with Descriptions
@@ -230,6 +231,7 @@ def get_weather(location: str) -> str:
 
     # fail every now and then to simulate real-world API unreliability
     if randint(1, 10) > 7:
+        error_counter.add(1, {"error_type": "API unreliability"})
         raise Exception(
             "Weather service is currently unavailable. Please try again later.")
 
@@ -247,6 +249,7 @@ def get_weather(location: str) -> str:
     if not api_key:
         logger.error("[get_weather] missing API key",
                      extra={"request_id": request_id})
+        error_counter.add(1, {"error_type": "MissingAPIKey"})
         raise ValueError(
             "Weather service not configured. OPENWEATHER_API_KEY environment variable is required.")
     try:
@@ -269,10 +272,12 @@ def get_weather(location: str) -> str:
     except requests.exceptions.RequestException as e:
         logger.error("[get_weather] request_error", extra={
                      "request_id": request_id, "city": location, "error": str(e)})
+        error_counter.add(1, {"error_type": type(e).__name__})
         return f"Error fetching weather data for {location}. Please check the city name."
     except KeyError as e:
         logger.error("[get_weather] parse_error", extra={
                      "request_id": request_id, "city": location, "error": str(e)})
+        error_counter.add(1, {"error_type": type(e).__name__})
         return f"Error parsing weather data for {location}."
 
 
@@ -481,13 +486,16 @@ async def run_agent(user_prompt: str):
             error_counter.add(1, {"error_type": type(e).__name__})
             return render_template('error.html', error=str(e)), 500
 
-    elapsed_ms = (current_span.end_time - current_span.start_time)
-    response_time_histogram.record(elapsed_ms)
+    elapsed_ms = (current_span.end_time - current_span.start_time) / 100000
+    logger.info("[run_agent] completed agent interaction",
+                extra={"elapsed_ms": elapsed_ms})
+    #response_time_histogram.record(elapsed_ms)
+    response_time_histogram.record(elapsed_ms, {"model_id": model_id})
 
     input_tokens = response.usage_details.input_token_count
     output_tokens = response.usage_details.output_token_count
     response_id = response.response_id
-    duration = elapsed_ms / 100000
+    duration = elapsed_ms
     host = "miniature-telegram-4gqj47g5vjhq9xr.github.dev"
 
     logger.info("[agent_response]", extra={
