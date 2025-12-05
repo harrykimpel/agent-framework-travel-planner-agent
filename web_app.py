@@ -153,6 +153,7 @@ app = Flask(__name__)
 # This function will be available to the agent as a tool
 # The agent can call this function to get random vacation destinations
 
+destination = ""
 
 def get_random_destination() -> str:
     """Get a random vacation destination.
@@ -340,55 +341,57 @@ def plan_trip():
     """Generate a travel plan based on user input."""
     logger.info("[plan_trip] received request")
     
-    try:
-        # Extract form data
-        origin = request.form.get('origin', 'Unknown')
-        destination = request.form.get('destination', '')
-        date = request.form.get('date', '')
-        duration = request.form.get('duration', '3')
-        interests = request.form.getlist('interests')
-        special_requests = request.form.get('special_requests', '')
+    # Create a span for this tool call
+    with tracer.start_as_current_span("plan_trip") as span:
+        try:
+            # Extract form data
+            origin = request.form.get('origin', 'Unknown')
+            destination = request.form.get('destination', '')
+            date = request.form.get('date', '')
+            duration = request.form.get('duration', '3')
+            interests = request.form.getlist('interests')
+            special_requests = request.form.get('special_requests', '')
 
-        # Build the user prompt
-        user_prompt = f"""Plan me a {duration}-day trip from {origin} to {destination} starting on {date}.
+            # Build the user prompt
+            user_prompt = f"""Plan me a {duration}-day trip from {origin} to {destination} starting on {date}.
 
-Trip Details:
-- Origin: {origin}
-- Destination: {destination}
-- Date: {date}
-- Duration: {duration} days
-- Interests: {', '.join(interests) if interests else 'General sightseeing'}
-- Special Requests: {special_requests if special_requests else 'None'}
+    Trip Details:
+    - Origin: {origin}
+    - Destination: {destination}
+    - Date: {date}
+    - Duration: {duration} days
+    - Interests: {', '.join(interests) if interests else 'General sightseeing'}
+    - Special Requests: {special_requests if special_requests else 'None'}
 
-Instructions:
-1. A detailed day-by-day itinerary with activities tailored to the interests
-2. Verification of the selected destination
-3. Current weather information for the destination
-4. Local cuisine recommendations
-5. Best times to visit specific attractions
-6. Travel tips and budget estimates
-7. Current date and time reference
-"""
+    Instructions:
+    1. A detailed day-by-day itinerary with activities tailored to the interests
+    2. Verification of the selected destination
+    3. Current weather information for the destination
+    4. Local cuisine recommendations
+    5. Best times to visit specific attractions
+    6. Travel tips and budget estimates
+    7. Current date and time reference
+    """
 
-        # Run the agent asynchronously
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        response = loop.run_until_complete(run_agent(user_prompt))
-        loop.close()
+            # Run the agent asynchronously
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            response = loop.run_until_complete(run_agent(user_prompt))
+            loop.close()
 
-        # Extract the travel plan
-        last_message = response.messages[-1]
-        text_content = last_message.contents[0].text
+            # Extract the travel plan
+            last_message = response.messages[-1]
+            text_content = last_message.contents[0].text
 
-        # Return result as HTML
-        return render_template('result.html',
-                               travel_plan=text_content,
-                               destination=destination,
-                               duration=duration)
+            # Return result as HTML
+            return render_template('result.html',
+                                travel_plan=text_content,
+                                destination=destination,
+                                duration=duration)
 
-    except Exception as e:
-        logger.error(f"[plan_trip] error: {str(e)}")
-        return render_template('error.html', error=str(e)), 500
+        except Exception as e:
+            logger.error(f"[plan_trip] error: {str(e)}")
+            return render_template('error.html', error=str(e)), 500
 
 
 @app.route('/api/plan', methods=['POST'])
@@ -481,6 +484,13 @@ async def run_agent(user_prompt: str):
 
             span_id = format(current_span.get_span_context().span_id, "016x")
             trace_id = format_trace_id(current_span.get_span_context().trace_id)
+
+            input_tokens = response.usage_details.input_token_count
+            output_tokens = response.usage_details.output_token_count
+            tokens = input_tokens + output_tokens
+            # Add response attributes
+            current_span.set_attribute("destination", destination)
+            current_span.set_attribute("totalTokens", tokens)
         except Exception as e:
             logger.error(f"Error planning trip: {str(e)}")
             error_counter.add(1, {"error_type": type(e).__name__})
@@ -488,12 +498,10 @@ async def run_agent(user_prompt: str):
 
     elapsed_ms = (current_span.end_time - current_span.start_time) / 100000
     logger.info("[run_agent] completed agent interaction",
-                extra={"elapsed_ms": elapsed_ms})
+                extra={"elapsed_ms": elapsed_ms, "destination": destination, "total_tokens": tokens})
     #response_time_histogram.record(elapsed_ms)
     response_time_histogram.record(elapsed_ms, {"model_id": model_id})
 
-    input_tokens = response.usage_details.input_token_count
-    output_tokens = response.usage_details.output_token_count
     response_id = response.response_id
     duration = elapsed_ms
     host = "miniature-telegram-4gqj47g5vjhq9xr.github.dev"
