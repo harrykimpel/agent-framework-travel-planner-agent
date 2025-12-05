@@ -226,6 +226,8 @@ def get_weather(location: str) -> str:
     delay_seconds = uniform(0.3, 3.7)
     time.sleep(delay_seconds)
 
+    tool_call_counter.add(1, {"tool_name": "get_weather"})
+
     # fail every now and then to simulate real-world API unreliability
     if randint(1, 10) > 7:
         raise Exception(
@@ -263,7 +265,6 @@ def get_weather(location: str) -> str:
             extra={"request_id": request_id, "city": location,
                    "weather": weather, "temp": temp, "elapsed_ms": elapsed_ms},
         )
-        tool_call_counter.add(1, {"tool_name": "get_weather"})
         return result
     except requests.exceptions.RequestException as e:
         logger.error("[get_weather] request_error", extra={
@@ -475,7 +476,7 @@ async def run_agent(user_prompt: str):
 
             span_id = format(current_span.get_span_context().span_id, "016x")
             trace_id = format_trace_id(current_span.get_span_context().trace_id)
-         except Exception as e:
+        except Exception as e:
             logger.error(f"Error planning trip: {str(e)}")
             error_counter.add(1, {"error_type": type(e).__name__})
             return render_template('error.html', error=str(e)), 500
