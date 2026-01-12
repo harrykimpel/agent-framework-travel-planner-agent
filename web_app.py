@@ -1,7 +1,14 @@
 # 📦 Import Required Libraries
 # Standard library imports for system operations and random number generation
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry._logs import set_logger_provider
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 import os
 from random import randint, uniform
+import random
+import string
 import asyncio
 import time
 import uuid
@@ -12,7 +19,7 @@ import uuid
 
 # Flask imports for web application
 from flask import Flask, render_template, request, jsonify
-#from flask_cors import CORS
+# from flask_cors import CORS
 
 # Third-party library for loading environment variables from .env file
 from dotenv import load_dotenv
@@ -48,9 +55,6 @@ app_logger.setLevel(logging.INFO)
 # Enable Agent Framework telemetry with OTLP exporter
 # Workaround: The agent framework's _get_otlp_exporters() doesn't pass headers
 # when endpoint is explicitly provided. We create exporters manually with headers.
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
-from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 
 # Create OTLP exporters that will auto-read endpoint and headers from environment
 # (OTEL_EXPORTER_OTLP_ENDPOINT and OTEL_EXPORTER_OTLP_HEADERS)
@@ -71,14 +75,13 @@ meter = get_meter()
 # The framework incorrectly checks for LogExporter type instead of LogRecordExporter,
 # so it adds a ConsoleLogExporter even though we provided OTLPLogExporter.
 # We need to replace the console exporter with our OTLP exporter.
-from opentelemetry._logs import get_logger_provider, set_logger_provider
-from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
-from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 
 # Create a fresh logger provider with only OTLP exporter
 logger_provider = LoggerProvider(resource=resource)
-otlp_log_exporter = [e for e in otlp_exporters if type(e).__name__ == 'OTLPLogExporter'][0]
-logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
+otlp_log_exporter = [e for e in otlp_exporters if type(
+    e).__name__ == 'OTLPLogExporter'][0]
+logger_provider.add_log_record_processor(
+    BatchLogRecordProcessor(otlp_log_exporter))
 
 # Get root logger to configure all loggers
 root_logger = logging.getLogger()
@@ -92,7 +95,7 @@ for handler in root_logger.handlers[:]:
 handler = LoggingHandler(logger_provider=logger_provider)
 root_logger.addHandler(handler)
 root_logger.setLevel(logging.INFO)
-set_logger_provider(logger_provider)
+# set_logger_provider(logger_provider)
 
 # Also attach to our named app logger explicitly
 app_logger.addHandler(handler)
@@ -102,7 +105,7 @@ logger = app_logger
 
 # 🌐 Initialize Flask Application
 app = Flask(__name__)
-#CORS(app)  # Enable CORS for API requests
+# CORS(app)  # Enable CORS for API requests
 
 # 🎲 Tool Function: Random Destination Generator
 # This function will be available to the agent as a tool
@@ -130,6 +133,7 @@ def get_random_destination() -> str:
 
     return destination
 
+
 def get_selected_destination(destination: str) -> str:
     """Return the selected destination for verification.
 
@@ -147,6 +151,7 @@ def get_selected_destination(destination: str) -> str:
         current_span.set_attribute("destination", destination)
 
     return destination
+
 
 # 🌏 Predefined Destinations with Descriptions
 DESTINATIONS = {
@@ -244,17 +249,24 @@ def get_datetime() -> str:
 # This client connects to GitHub Models API (OpenAI-compatible endpoint)
 # Environment variables required:
 # - OPENAI_API_KEY: Your OpenAI API key
-# - GITHUB_MODEL_ID: Model to use (e.g., gpt-4o-mini, gpt-4o)
-model_id = os.environ.get("GITHUB_MODEL_ID", "gpt-4o-mini")
+# - MODEL_ID: Model to use (e.g., gpt-4o-mini, gpt-4o)
+model_id = os.environ.get("MODEL_ID", "gpt-4o-mini")
 # openai_chat_client = OpenAIChatClient(
-    #     base_url=os.environ.get("GITHUB_ENDPOINT"),
-    #     api_key=os.environ.get("GITHUB_TOKEN"),
-    #     model_id=model_id
-    # )
+#     base_url=os.environ.get("GITHUB_ENDPOINT"),
+#     api_key=os.environ.get("GITHUB_TOKEN"),
+#     model_id=model_id
+# )
+# openai_chat_client = OpenAIChatClient(
+#     api_key=os.environ.get("OPENAI_API_KEY"),
+#     model_id=model_id
+# )
+# Use Microsoft Foundry endpoint directly
 openai_chat_client = OpenAIChatClient(
-    api_key=os.environ.get("OPENAI_API_KEY"),
+    base_url=os.environ.get("MSFT_FOUNDRY_OPENAI_ENDPOINT"),
+    api_key=os.environ.get("MSFT_FOUNDRY_OPENAI_API_KEY"),
     model_id=model_id
 )
+
 
 # 🤖 Create the Travel Planning Agent
 # This creates a conversational AI agent with specific capabilities:
@@ -285,7 +297,7 @@ def index():
 def plan_trip():
     """Generate a travel plan based on user input."""
     logger.info("[plan_trip] received request")
-    
+
     try:
         # Extract form data
         origin = request.form.get('origin', 'Unknown')
@@ -433,6 +445,9 @@ async def run_agent(user_prompt: str):
     duration = (current_span.end_time - current_span.start_time) / 100000
     host = "miniature-telegram-4gqj47g5vjhq9xr.github.dev"
 
+    # create string variable and generate a random string with upper and lower case letters and numbers of length 29
+    random_string = ''.join(random.choices(
+        string.ascii_letters + string.digits, k=29))
     logger.info("[agent_response]", extra={
         "newrelic.event.type": "LlmChatCompletionMessage",
         "appId": 1234567890,
