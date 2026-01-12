@@ -2,6 +2,8 @@
 # Standard library imports for system operations and random number generation
 import os
 from random import randint, uniform
+import random
+import string
 import asyncio
 import time
 import uuid
@@ -299,15 +301,21 @@ def get_datetime() -> str:
 # This client connects to GitHub Models API (OpenAI-compatible endpoint)
 # Environment variables required:
 # - OPENAI_API_KEY: Your OpenAI API key
-# - GITHUB_MODEL_ID: Model to use (e.g., gpt-4o-mini, gpt-4o)
-model_id = os.environ.get("GITHUB_MODEL_ID", "gpt-4o-mini")
+# - MODEL_ID: Model to use (e.g., gpt-4o-mini, gpt-4o)
+model_id = os.environ.get("MODEL_ID", "gpt-4o-mini")
 # openai_chat_client = OpenAIChatClient(
     #     base_url=os.environ.get("GITHUB_ENDPOINT"),
     #     api_key=os.environ.get("GITHUB_TOKEN"),
     #     model_id=model_id
     # )
+# openai_chat_client = OpenAIChatClient(
+#     api_key=os.environ.get("OPENAI_API_KEY"),
+#     model_id=model_id
+# )
+# Use Microsoft Foundry endpoint directly
 openai_chat_client = OpenAIChatClient(
-    api_key=os.environ.get("OPENAI_API_KEY"),
+    base_url=os.environ.get("MSFT_FOUNDRY_OPENAI_ENDPOINT"),
+    api_key=os.environ.get("MSFT_FOUNDRY_OPENAI_API_KEY"),
     model_id=model_id
 )
 
@@ -457,6 +465,7 @@ Instructions:
 
 
 async def run_agent(user_prompt: str):
+    print("🚀 Running agent with prompt:", user_prompt)
     """Run the travel planning agent with the given prompt."""
     span_id = ""
     trace_id = ""
@@ -506,6 +515,12 @@ async def run_agent(user_prompt: str):
     duration = elapsed_ms
     host = "miniature-telegram-4gqj47g5vjhq9xr.github.dev"
 
+    # create string variable and generate a random string with upper and lower case letters and numbers of length 29
+    random_string = ''.join(random.choices(
+        string.ascii_letters + string.digits, k=29))
+    idUser = "chatcmpl-"+random_string+"-0"
+    idAssistant = "chatcmpl-"+random_string+"-1"
+
     logger.info("[agent_response]", extra={
         "newrelic.event.type": "LlmChatCompletionMessage",
         "appId": 1234567890,
@@ -513,11 +528,12 @@ async def run_agent(user_prompt: str):
         "duration": duration,
         "host": host,
         "entityGuid": newrelicEntityGuid,
-        "id": str(uuid.uuid4()),
+        "id": idUser,
         "request_id": str(uuid.uuid4()),
         "span_id": span_id,
         "trace_id": trace_id,
         "response.model": model_id,
+        "token_count": input_tokens,
         "vendor": "openai",
         "ingest_source": "Python",
         "content": user_prompt,
@@ -525,6 +541,7 @@ async def run_agent(user_prompt: str):
         "sequence": 0,
         "is_response": False,
         "completion_id": str(uuid.uuid4()),
+        "realAgentId": 1234567890,
         "tags.aiEnabledApp": True,
         "tags.account": newrelicAccount,
         "tags.accountId": newrelicAccountId,
@@ -537,11 +554,12 @@ async def run_agent(user_prompt: str):
         "duration": duration,
         "host": host,
         "entityGuid": newrelicEntityGuid,
-        "id": str(uuid.uuid4()),
+        "id": idAssistant,
         "request_id": str(uuid.uuid4()),
         "span_id": span_id,
         "trace_id": trace_id,
         "response.model": model_id,
+        "token_count": output_tokens,
         "vendor": "openai",
         "ingest_source": "Python",
         "content": text_content,
@@ -549,6 +567,7 @@ async def run_agent(user_prompt: str):
         "sequence": 1,
         "is_response": True,
         "completion_id": str(uuid.uuid4()),
+        "realAgentId": 1234567890,
         "tags.aiEnabledApp": True,
         "tags.account": newrelicAccount,
         "tags.accountId": newrelicAccountId,
@@ -573,6 +592,7 @@ async def run_agent(user_prompt: str):
         "response.choices.finish_reason": "stop",
         "vendor": "openai",
         "ingest_source": "Python",
+        "realAgentId": 1234567890,
         "tags.aiEnabledApp": True,
         "tags.account": newrelicAccount,
         "tags.accountId": newrelicAccountId,

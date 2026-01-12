@@ -85,8 +85,8 @@ export OTLP_HEADERS="api-key=$NEW_RELIC_LICENSE_KEY_AI"
 
 export GITHUB_TOKEN="$GITHUB_TOKEN"
 export GITHUB_ENDPOINT="https://models.github.ai/inference"
-export GITHUB_MODEL_ID="gpt-4o-mini"
-export OPENAI_CHAT_MODEL_ID="gpt-4o-mini"
+#export GITHUB_MODEL_ID="gpt-4o-mini"
+#export OPENAI_CHAT_MODEL_ID="gpt-4o-mini"
 
 # Run the Flask application
 python web_app.py
