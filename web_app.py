@@ -314,8 +314,8 @@ model_id = os.environ.get("MODEL_ID", "gpt-4o-mini")
 # )
 # Use Microsoft Foundry endpoint directly
 openai_chat_client = OpenAIChatClient(
-    base_url=os.environ.get("MSFT_FOUNDRY_OPENAI_ENDPOINT"),
-    api_key=os.environ.get("MSFT_FOUNDRY_OPENAI_API_KEY"),
+    base_url=os.environ.get("MSFT_FOUNDRY_ENDPOINT"),
+    api_key=os.environ.get("MSFT_FOUNDRY_API_KEY"),
     model_id=model_id
 )
 
@@ -486,6 +486,7 @@ async def run_agent(user_prompt: str):
                 user_prompt += instructions_negativity
 
             response = await agent.run(user_prompt)
+            #logger.info("[run_agent] agent interaction response received: %s", response)
 
             # 📖 Extract the Travel Plan
             last_message = response.messages[-1]
@@ -494,6 +495,7 @@ async def run_agent(user_prompt: str):
             span_id = format(current_span.get_span_context().span_id, "016x")
             trace_id = format_trace_id(current_span.get_span_context().trace_id)
 
+            #logger.info("[run_agent] agent interaction response received: %s", json.dumps(response.to_dict()))
             input_tokens = response.usage_details.input_token_count
             output_tokens = response.usage_details.output_token_count
             tokens = input_tokens + output_tokens
@@ -512,6 +514,7 @@ async def run_agent(user_prompt: str):
     response_time_histogram.record(elapsed_ms, {"model_id": model_id})
 
     response_id = response.response_id
+    #response_model = model_id
     duration = elapsed_ms
     host = "miniature-telegram-4gqj47g5vjhq9xr.github.dev"
 
