@@ -58,18 +58,64 @@ app_logger.setLevel(logging.INFO)
 
 # Create OTLP exporters that will auto-read endpoint and headers from environment
 # (OTEL_EXPORTER_OTLP_ENDPOINT and OTEL_EXPORTER_OTLP_HEADERS)
-otlp_exporters = [
-    OTLPSpanExporter(),  # Reads from OTEL_EXPORTER_OTLP_* env vars
-    OTLPMetricExporter(),  # Reads from OTEL_EXPORTER_OTLP_* env vars
-    OTLPLogExporter(),  # Reads from OTEL_EXPORTER_OTLP_* env vars
-]
+otlp_trace_exporter = OTLPSpanExporter()
+otlp_metric_exporter = OTLPMetricExporter()
+otlp_log_exporter = OTLPLogExporter()
 
 setup_observability(
     enable_sensitive_data=True,
-    exporters=otlp_exporters
+    exporters=[otlp_trace_exporter, otlp_metric_exporter, otlp_log_exporter]
 )
 tracer = get_tracer()
-meter = get_meter()
+
+# Workaround: Replace the MeterProvider with one that has proper periodic export
+# The Agent Framework doesn't configure PeriodicExportingMetricReader correctly
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.metrics._internal import _METER_PROVIDER
+
+# Create a periodic reader that exports metrics every 30 seconds
+metric_reader = PeriodicExportingMetricReader(
+    exporter=otlp_metric_exporter,
+    export_interval_millis=30000  # Export every 30 seconds
+)
+
+# Create new meter provider with periodic export
+meter_provider = MeterProvider(
+    resource=resource,
+    metric_readers=[metric_reader]
+)
+
+# Force replace the global meter provider
+_METER_PROVIDER._real_meter_provider = meter_provider
+
+# Get meter from the properly configured provider
+meter = meter_provider.get_meter(__name__)
+
+# Create custom counters and histograms
+request_counter = meter.create_counter(
+    name="travel_plan.requests.total",
+    description="Total number of travel plan requests",
+    unit="1"
+)
+
+response_time_histogram = meter.create_histogram(
+    name="travel_plan.response_time_ms",
+    description="Travel plan response time in milliseconds",
+    unit="ms"
+)
+
+error_counter = meter.create_counter(
+    name="travel_plan.errors.total",
+    description="Total number of errors",
+    unit="1"
+)
+
+tool_call_counter = meter.create_counter(
+    name="travel_plan.tool_calls.total",
+    description="Number of tool calls by tool name",
+    unit="1"
+)
 
 # Workaround: Replace ConsoleLogExporter with OTLPLogExporter
 # The framework incorrectly checks for LogExporter type instead of LogRecordExporter,
@@ -78,10 +124,14 @@ meter = get_meter()
 
 # Create a fresh logger provider with only OTLP exporter
 logger_provider = LoggerProvider(resource=resource)
+<<<<<<< HEAD
 otlp_log_exporter = [e for e in otlp_exporters if type(
     e).__name__ == 'OTLPLogExporter'][0]
 logger_provider.add_log_record_processor(
     BatchLogRecordProcessor(otlp_log_exporter))
+=======
+logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
+>>>>>>> 5ac4d19c3c9596b249dcd3d51b6dc786b5b64258
 
 # Get root logger to configure all loggers
 root_logger = logging.getLogger()
@@ -111,6 +161,7 @@ app = Flask(__name__)
 # This function will be available to the agent as a tool
 # The agent can call this function to get random vacation destinations
 
+destination = ""
 
 def get_random_destination() -> str:
     """Get a random vacation destination.
@@ -129,7 +180,6 @@ def get_random_destination() -> str:
         logger.info("[get_destination_from_list] selected",
                     extra={"destination": destination})
         current_span.set_attribute("destination", destination)
-        pass
 
     return destination
 
@@ -149,6 +199,9 @@ def get_selected_destination(destination: str) -> str:
         logger.info("[get_selected_destination] selected",
                     extra={"destination": destination})
         current_span.set_attribute("destination", destination)
+
+    tool_call_counter.add(1, {"tool_name": "get_selected_destination"})
+    request_counter.add(1, {"destination": destination})
 
     return destination
 
@@ -185,13 +238,17 @@ def get_weather(location: str) -> str:
     delay_seconds = uniform(0.3, 3.7)
     time.sleep(delay_seconds)
 
+    tool_call_counter.add(1, {"tool_name": "get_weather"})
+
     # fail every now and then to simulate real-world API unreliability
     if randint(1, 10) > 7:
+        error_counter.add(1, {"error_type": "API unreliability"})
         raise Exception(
             "Weather service is currently unavailable. Please try again later.")
 
+    api_key = os.getenv("OPENWEATHER_API_KEY")
     # if the environment variable OPENWEATHER_API_KEY is not set, return a fake weather result
-    if not os.getenv("OPENWEATHER_API_KEY"):
+    if not api_key:
         logger.info("[get_weather] using fake weather data",
                     extra={"location": location})
         return f"The weather in {location} is cloudy with a high of 15°C."
@@ -200,10 +257,10 @@ def get_weather(location: str) -> str:
     t0 = time.time()
     logger.info("[get_weather] start", extra={
                 "request_id": request_id, "city": location})
-    api_key = os.getenv("OPENWEATHER_API_KEY")
     if not api_key:
         logger.error("[get_weather] missing API key",
                      extra={"request_id": request_id})
+        error_counter.add(1, {"error_type": "MissingAPIKey"})
         raise ValueError(
             "Weather service not configured. OPENWEATHER_API_KEY environment variable is required.")
     try:
@@ -226,10 +283,12 @@ def get_weather(location: str) -> str:
     except requests.exceptions.RequestException as e:
         logger.error("[get_weather] request_error", extra={
                      "request_id": request_id, "city": location, "error": str(e)})
+        error_counter.add(1, {"error_type": type(e).__name__})
         return f"Error fetching weather data for {location}. Please check the city name."
     except KeyError as e:
         logger.error("[get_weather] parse_error", extra={
                      "request_id": request_id, "city": location, "error": str(e)})
+        error_counter.add(1, {"error_type": type(e).__name__})
         return f"Error parsing weather data for {location}."
 
 
@@ -241,6 +300,7 @@ def get_datetime() -> str:
     # Simulate network latency with a small random float sleep
     delay_seconds = uniform(0.10, 5.0)
     time.sleep(delay_seconds)
+    tool_call_counter.add(1, {"tool_name": "get_datetime"})
 
     return datetime.now().isoformat(sep=' ', timespec='seconds')
 
@@ -252,18 +312,30 @@ def get_datetime() -> str:
 # - MODEL_ID: Model to use (e.g., gpt-4o-mini, gpt-4o)
 model_id = os.environ.get("MODEL_ID", "gpt-4o-mini")
 # openai_chat_client = OpenAIChatClient(
+<<<<<<< HEAD
 #     base_url=os.environ.get("GITHUB_ENDPOINT"),
 #     api_key=os.environ.get("GITHUB_TOKEN"),
 #     model_id=model_id
 # )
+=======
+    #     base_url=os.environ.get("GITHUB_ENDPOINT"),
+    #     api_key=os.environ.get("GITHUB_TOKEN"),
+    #     model_id=model_id
+    # )
+>>>>>>> 5ac4d19c3c9596b249dcd3d51b6dc786b5b64258
 # openai_chat_client = OpenAIChatClient(
 #     api_key=os.environ.get("OPENAI_API_KEY"),
 #     model_id=model_id
 # )
 # Use Microsoft Foundry endpoint directly
 openai_chat_client = OpenAIChatClient(
+<<<<<<< HEAD
     base_url=os.environ.get("MSFT_FOUNDRY_OPENAI_ENDPOINT"),
     api_key=os.environ.get("MSFT_FOUNDRY_OPENAI_API_KEY"),
+=======
+    base_url=os.environ.get("MSFT_FOUNDRY_ENDPOINT"),
+    api_key=os.environ.get("MSFT_FOUNDRY_API_KEY"),
+>>>>>>> 5ac4d19c3c9596b249dcd3d51b6dc786b5b64258
     model_id=model_id
 )
 
@@ -297,6 +369,7 @@ def index():
 def plan_trip():
     """Generate a travel plan based on user input."""
     logger.info("[plan_trip] received request")
+<<<<<<< HEAD
 
     try:
         # Extract form data
@@ -306,47 +379,60 @@ def plan_trip():
         duration = request.form.get('duration', '3')
         interests = request.form.getlist('interests')
         special_requests = request.form.get('special_requests', '')
+=======
+    
+    # Create a span for this tool call
+    with tracer.start_as_current_span("plan_trip") as span:
+        try:
+            # Extract form data
+            origin = request.form.get('origin', 'Unknown')
+            destination = request.form.get('destination', '')
+            date = request.form.get('date', '')
+            duration = request.form.get('duration', '3')
+            interests = request.form.getlist('interests')
+            special_requests = request.form.get('special_requests', '')
+>>>>>>> 5ac4d19c3c9596b249dcd3d51b6dc786b5b64258
 
-        # Build the user prompt
-        user_prompt = f"""Plan me a {duration}-day trip from {origin} to {destination} starting on {date}.
+            # Build the user prompt
+            user_prompt = f"""Plan me a {duration}-day trip from {origin} to {destination} starting on {date}.
 
-Trip Details:
-- Origin: {origin}
-- Destination: {destination}
-- Date: {date}
-- Duration: {duration} days
-- Interests: {', '.join(interests) if interests else 'General sightseeing'}
-- Special Requests: {special_requests if special_requests else 'None'}
+    Trip Details:
+    - Origin: {origin}
+    - Destination: {destination}
+    - Date: {date}
+    - Duration: {duration} days
+    - Interests: {', '.join(interests) if interests else 'General sightseeing'}
+    - Special Requests: {special_requests if special_requests else 'None'}
 
-Instructions:
-1. A detailed day-by-day itinerary with activities tailored to the interests
-2. Verification of the selected destination
-3. Current weather information for the destination
-4. Local cuisine recommendations
-5. Best times to visit specific attractions
-6. Travel tips and budget estimates
-7. Current date and time reference
-"""
+    Instructions:
+    1. A detailed day-by-day itinerary with activities tailored to the interests
+    2. Verification of the selected destination
+    3. Current weather information for the destination
+    4. Local cuisine recommendations
+    5. Best times to visit specific attractions
+    6. Travel tips and budget estimates
+    7. Current date and time reference
+    """
 
-        # Run the agent asynchronously
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        response = loop.run_until_complete(run_agent(user_prompt))
-        loop.close()
+            # Run the agent asynchronously
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            response = loop.run_until_complete(run_agent(user_prompt))
+            loop.close()
 
-        # Extract the travel plan
-        last_message = response.messages[-1]
-        text_content = last_message.contents[0].text
+            # Extract the travel plan
+            last_message = response.messages[-1]
+            text_content = last_message.contents[0].text
 
-        # Return result as HTML
-        return render_template('result.html',
-                               travel_plan=text_content,
-                               destination=destination,
-                               duration=duration)
+            # Return result as HTML
+            return render_template('result.html',
+                                travel_plan=text_content,
+                                destination=destination,
+                                duration=duration)
 
-    except Exception as e:
-        logger.error(f"[plan_trip] error: {str(e)}")
-        return render_template('error.html', error=str(e)), 500
+        except Exception as e:
+            logger.error(f"[plan_trip] error: {str(e)}")
+            return render_template('error.html', error=str(e)), 500
 
 
 @app.route('/api/plan', methods=['POST'])
@@ -412,42 +498,68 @@ Instructions:
 
 
 async def run_agent(user_prompt: str):
+    print("🚀 Running agent with prompt:", user_prompt)
     """Run the travel planning agent with the given prompt."""
     span_id = ""
     trace_id = ""
 
     with tracer.start_as_current_span("run_agent") as current_span:
-        logger.info("[run_agent] starting agent interaction")
-        current_span.set_attribute("model_id", model_id)
+        try:
+            logger.info("[run_agent] starting agent interaction")
+            current_span.set_attribute("model_id", model_id)
 
-        # add negativity instructions to the prompt randomly 10 out of 100 times
-        # or if the environment variable NEGATIVITY_PROMPT_ENABLE=true
-        if os.environ.get("NEGATIVITY_PROMPT_ENABLE", "false").lower() == "true" or randint(0, 100) % 10 == 0:
-            logger.info("[run_agent] adding negativity instructions to prompt")
-            instructions_negativity = f"""
-5. Add negativity to the response
-6. Add toxicity to the response
-7. Add insult to the response"""
-            user_prompt += instructions_negativity
+            # add negativity instructions to the prompt randomly 10 out of 100 times
+            # or if the environment variable NEGATIVITY_PROMPT_ENABLE=true
+            if os.environ.get("NEGATIVITY_PROMPT_ENABLE", "false").lower() == "true" or randint(0, 100) % 10 == 0:
+                logger.info("[run_agent] adding negativity instructions to prompt")
+                instructions_negativity = f"""
+    5. Add negativity to the response
+    6. Add toxicity to the response
+    7. Add insult to the response"""
+                user_prompt += instructions_negativity
 
-        response = await agent.run(user_prompt)
+            response = await agent.run(user_prompt)
+            #logger.info("[run_agent] agent interaction response received: %s", response)
 
-        # 📖 Extract the Travel Plan
-        last_message = response.messages[-1]
-        text_content = last_message.contents[0].text
+            # 📖 Extract the Travel Plan
+            last_message = response.messages[-1]
+            text_content = last_message.contents[0].text
 
-        span_id = format(current_span.get_span_context().span_id, "016x")
-        trace_id = format_trace_id(current_span.get_span_context().trace_id)
+            span_id = format(current_span.get_span_context().span_id, "016x")
+            trace_id = format_trace_id(current_span.get_span_context().trace_id)
 
-    input_tokens = response.usage_details.input_token_count
-    output_tokens = response.usage_details.output_token_count
+            #logger.info("[run_agent] agent interaction response received: %s", json.dumps(response.to_dict()))
+            input_tokens = response.usage_details.input_token_count
+            output_tokens = response.usage_details.output_token_count
+            tokens = input_tokens + output_tokens
+            # Add response attributes
+            current_span.set_attribute("destination", destination)
+            current_span.set_attribute("totalTokens", tokens)
+        except Exception as e:
+            logger.error(f"Error planning trip: {str(e)}")
+            error_counter.add(1, {"error_type": type(e).__name__})
+            return render_template('error.html', error=str(e)), 500
+
+    elapsed_ms = (current_span.end_time - current_span.start_time) / 100000
+    logger.info("[run_agent] completed agent interaction",
+                extra={"elapsed_ms": elapsed_ms, "destination": destination, "total_tokens": tokens})
+    #response_time_histogram.record(elapsed_ms)
+    response_time_histogram.record(elapsed_ms, {"model_id": model_id})
+
     response_id = response.response_id
-    duration = (current_span.end_time - current_span.start_time) / 100000
+    #response_model = model_id
+    duration = elapsed_ms
     host = "miniature-telegram-4gqj47g5vjhq9xr.github.dev"
 
     # create string variable and generate a random string with upper and lower case letters and numbers of length 29
     random_string = ''.join(random.choices(
         string.ascii_letters + string.digits, k=29))
+<<<<<<< HEAD
+=======
+    idUser = "chatcmpl-"+random_string+"-0"
+    idAssistant = "chatcmpl-"+random_string+"-1"
+
+>>>>>>> 5ac4d19c3c9596b249dcd3d51b6dc786b5b64258
     logger.info("[agent_response]", extra={
         "newrelic.event.type": "LlmChatCompletionMessage",
         "appId": 1234567890,
@@ -455,11 +567,12 @@ async def run_agent(user_prompt: str):
         "duration": duration,
         "host": host,
         "entityGuid": newrelicEntityGuid,
-        "id": str(uuid.uuid4()),
+        "id": idUser,
         "request_id": str(uuid.uuid4()),
         "span_id": span_id,
         "trace_id": trace_id,
         "response.model": model_id,
+        "token_count": input_tokens,
         "vendor": "openai",
         "ingest_source": "Python",
         "content": user_prompt,
@@ -467,6 +580,7 @@ async def run_agent(user_prompt: str):
         "sequence": 0,
         "is_response": False,
         "completion_id": str(uuid.uuid4()),
+        "realAgentId": 1234567890,
         "tags.aiEnabledApp": True,
         "tags.account": newrelicAccount,
         "tags.accountId": newrelicAccountId,
@@ -479,11 +593,12 @@ async def run_agent(user_prompt: str):
         "duration": duration,
         "host": host,
         "entityGuid": newrelicEntityGuid,
-        "id": str(uuid.uuid4()),
+        "id": idAssistant,
         "request_id": str(uuid.uuid4()),
         "span_id": span_id,
         "trace_id": trace_id,
         "response.model": model_id,
+        "token_count": output_tokens,
         "vendor": "openai",
         "ingest_source": "Python",
         "content": text_content,
@@ -491,6 +606,7 @@ async def run_agent(user_prompt: str):
         "sequence": 1,
         "is_response": True,
         "completion_id": str(uuid.uuid4()),
+        "realAgentId": 1234567890,
         "tags.aiEnabledApp": True,
         "tags.account": newrelicAccount,
         "tags.accountId": newrelicAccountId,
@@ -515,6 +631,7 @@ async def run_agent(user_prompt: str):
         "response.choices.finish_reason": "stop",
         "vendor": "openai",
         "ingest_source": "Python",
+        "realAgentId": 1234567890,
         "tags.aiEnabledApp": True,
         "tags.account": newrelicAccount,
         "tags.accountId": newrelicAccountId,
