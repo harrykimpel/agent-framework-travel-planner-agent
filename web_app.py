@@ -524,6 +524,8 @@ async def run_agent(user_prompt: str):
     idUser = "chatcmpl-"+random_string+"-0"
     idAssistant = "chatcmpl-"+random_string+"-1"
 
+    print("🚀 Agent response received:", text_content)
+
     logger.info("[agent_response]", extra={
         "newrelic.event.type": "LlmChatCompletionMessage",
         "appId": 1234567890,
