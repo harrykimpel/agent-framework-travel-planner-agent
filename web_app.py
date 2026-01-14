@@ -1,7 +1,10 @@
 # 📦 Import Required Libraries
 # Standard library imports for system operations and random number generation
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
-from opentelemetry._logs import set_logger_provider
+from opentelemetry._logs import get_logger_provider, set_logger_provider
+from opentelemetry.metrics._internal import _METER_PROVIDER
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -70,9 +73,6 @@ tracer = get_tracer()
 
 # Workaround: Replace the MeterProvider with one that has proper periodic export
 # The Agent Framework doesn't configure PeriodicExportingMetricReader correctly
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-from opentelemetry.metrics._internal import _METER_PROVIDER
 
 # Create a periodic reader that exports metrics every 30 seconds
 metric_reader = PeriodicExportingMetricReader(
@@ -124,14 +124,8 @@ tool_call_counter = meter.create_counter(
 
 # Create a fresh logger provider with only OTLP exporter
 logger_provider = LoggerProvider(resource=resource)
-<<<<<<< HEAD
-otlp_log_exporter = [e for e in otlp_exporters if type(
-    e).__name__ == 'OTLPLogExporter'][0]
 logger_provider.add_log_record_processor(
     BatchLogRecordProcessor(otlp_log_exporter))
-=======
-logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
->>>>>>> 5ac4d19c3c9596b249dcd3d51b6dc786b5b64258
 
 # Get root logger to configure all loggers
 root_logger = logging.getLogger()
@@ -145,7 +139,7 @@ for handler in root_logger.handlers[:]:
 handler = LoggingHandler(logger_provider=logger_provider)
 root_logger.addHandler(handler)
 root_logger.setLevel(logging.INFO)
-# set_logger_provider(logger_provider)
+set_logger_provider(logger_provider)
 
 # Also attach to our named app logger explicitly
 app_logger.addHandler(handler)
@@ -162,6 +156,7 @@ app = Flask(__name__)
 # The agent can call this function to get random vacation destinations
 
 destination = ""
+
 
 def get_random_destination() -> str:
     """Get a random vacation destination.
@@ -312,33 +307,20 @@ def get_datetime() -> str:
 # - MODEL_ID: Model to use (e.g., gpt-4o-mini, gpt-4o)
 model_id = os.environ.get("MODEL_ID", "gpt-4o-mini")
 # openai_chat_client = OpenAIChatClient(
-<<<<<<< HEAD
 #     base_url=os.environ.get("GITHUB_ENDPOINT"),
 #     api_key=os.environ.get("GITHUB_TOKEN"),
 #     model_id=model_id
 # )
-=======
-    #     base_url=os.environ.get("GITHUB_ENDPOINT"),
-    #     api_key=os.environ.get("GITHUB_TOKEN"),
-    #     model_id=model_id
-    # )
->>>>>>> 5ac4d19c3c9596b249dcd3d51b6dc786b5b64258
 # openai_chat_client = OpenAIChatClient(
 #     api_key=os.environ.get("OPENAI_API_KEY"),
 #     model_id=model_id
 # )
 # Use Microsoft Foundry endpoint directly
 openai_chat_client = OpenAIChatClient(
-<<<<<<< HEAD
-    base_url=os.environ.get("MSFT_FOUNDRY_OPENAI_ENDPOINT"),
-    api_key=os.environ.get("MSFT_FOUNDRY_OPENAI_API_KEY"),
-=======
     base_url=os.environ.get("MSFT_FOUNDRY_ENDPOINT"),
     api_key=os.environ.get("MSFT_FOUNDRY_API_KEY"),
->>>>>>> 5ac4d19c3c9596b249dcd3d51b6dc786b5b64258
     model_id=model_id
 )
-
 
 # 🤖 Create the Travel Planning Agent
 # This creates a conversational AI agent with specific capabilities:
@@ -369,18 +351,7 @@ def index():
 def plan_trip():
     """Generate a travel plan based on user input."""
     logger.info("[plan_trip] received request")
-<<<<<<< HEAD
 
-    try:
-        # Extract form data
-        origin = request.form.get('origin', 'Unknown')
-        destination = request.form.get('destination', '')
-        date = request.form.get('date', '')
-        duration = request.form.get('duration', '3')
-        interests = request.form.getlist('interests')
-        special_requests = request.form.get('special_requests', '')
-=======
-    
     # Create a span for this tool call
     with tracer.start_as_current_span("plan_trip") as span:
         try:
@@ -391,7 +362,6 @@ def plan_trip():
             duration = request.form.get('duration', '3')
             interests = request.form.getlist('interests')
             special_requests = request.form.get('special_requests', '')
->>>>>>> 5ac4d19c3c9596b249dcd3d51b6dc786b5b64258
 
             # Build the user prompt
             user_prompt = f"""Plan me a {duration}-day trip from {origin} to {destination} starting on {date}.
@@ -426,9 +396,9 @@ def plan_trip():
 
             # Return result as HTML
             return render_template('result.html',
-                                travel_plan=text_content,
-                                destination=destination,
-                                duration=duration)
+                                   travel_plan=text_content,
+                                   destination=destination,
+                                   duration=duration)
 
         except Exception as e:
             logger.error(f"[plan_trip] error: {str(e)}")
@@ -511,7 +481,8 @@ async def run_agent(user_prompt: str):
             # add negativity instructions to the prompt randomly 10 out of 100 times
             # or if the environment variable NEGATIVITY_PROMPT_ENABLE=true
             if os.environ.get("NEGATIVITY_PROMPT_ENABLE", "false").lower() == "true" or randint(0, 100) % 10 == 0:
-                logger.info("[run_agent] adding negativity instructions to prompt")
+                logger.info(
+                    "[run_agent] adding negativity instructions to prompt")
                 instructions_negativity = f"""
     5. Add negativity to the response
     6. Add toxicity to the response
@@ -519,16 +490,17 @@ async def run_agent(user_prompt: str):
                 user_prompt += instructions_negativity
 
             response = await agent.run(user_prompt)
-            #logger.info("[run_agent] agent interaction response received: %s", response)
+            # logger.info("[run_agent] agent interaction response received: %s", response)
 
             # 📖 Extract the Travel Plan
             last_message = response.messages[-1]
             text_content = last_message.contents[0].text
 
             span_id = format(current_span.get_span_context().span_id, "016x")
-            trace_id = format_trace_id(current_span.get_span_context().trace_id)
+            trace_id = format_trace_id(
+                current_span.get_span_context().trace_id)
 
-            #logger.info("[run_agent] agent interaction response received: %s", json.dumps(response.to_dict()))
+            # logger.info("[run_agent] agent interaction response received: %s", json.dumps(response.to_dict()))
             input_tokens = response.usage_details.input_token_count
             output_tokens = response.usage_details.output_token_count
             tokens = input_tokens + output_tokens
@@ -543,23 +515,20 @@ async def run_agent(user_prompt: str):
     elapsed_ms = (current_span.end_time - current_span.start_time) / 100000
     logger.info("[run_agent] completed agent interaction",
                 extra={"elapsed_ms": elapsed_ms, "destination": destination, "total_tokens": tokens})
-    #response_time_histogram.record(elapsed_ms)
+    # response_time_histogram.record(elapsed_ms)
     response_time_histogram.record(elapsed_ms, {"model_id": model_id})
 
     response_id = response.response_id
-    #response_model = model_id
+    # response_model = model_id
     duration = elapsed_ms
     host = "miniature-telegram-4gqj47g5vjhq9xr.github.dev"
 
     # create string variable and generate a random string with upper and lower case letters and numbers of length 29
     random_string = ''.join(random.choices(
         string.ascii_letters + string.digits, k=29))
-<<<<<<< HEAD
-=======
     idUser = "chatcmpl-"+random_string+"-0"
     idAssistant = "chatcmpl-"+random_string+"-1"
 
->>>>>>> 5ac4d19c3c9596b249dcd3d51b6dc786b5b64258
     logger.info("[agent_response]", extra={
         "newrelic.event.type": "LlmChatCompletionMessage",
         "appId": 1234567890,
