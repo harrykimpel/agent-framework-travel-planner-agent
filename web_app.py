@@ -2,9 +2,9 @@
 # Standard library imports for system operations and random number generation
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry._logs import get_logger_provider, set_logger_provider
-from opentelemetry.metrics._internal import _METER_PROVIDER
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.metrics import set_meter_provider
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -86,8 +86,8 @@ meter_provider = MeterProvider(
     metric_readers=[metric_reader]
 )
 
-# Force replace the global meter provider
-_METER_PROVIDER._real_meter_provider = meter_provider
+# Set the global meter provider using the proper OpenTelemetry API
+set_meter_provider(meter_provider)
 
 # Get meter from the properly configured provider
 meter = meter_provider.get_meter(__name__)
