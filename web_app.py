@@ -215,7 +215,7 @@ DESTINATIONS = {
     "Cairo, Egypt": "🔺 Gateway to ancient wonders",
     "Cape Town, South Africa": "🌅 Scenic beauty and Table Mountain",
     "Rio de Janeiro, Brazil": "🎭 Vibrant culture and beaches",
-    "Bali, Indonesia": "🌴 Tropical paradise and spiritual haven"
+    "Bali, Indonesia": "🌴 Tropical paradise and spiritual haven",
     "Paris, France": "🗼 The City of Light, romantic and iconic"
 }
 
