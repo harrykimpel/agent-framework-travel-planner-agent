@@ -205,16 +205,18 @@ def get_selected_destination(destination: str) -> str:
 DESTINATIONS = {
     "Garmisch-Partenkirchen, Germany": "🏔️ Alpine village with stunning mountain views",
     "Munich, Germany": "🍺 Bavarian capital famous for culture and beer",
-    "Barcelona, Spain": "🏖️ Coastal city with stunning architecture",
-    "Paris, France": "🗼 The City of Light, romantic and iconic",
     "Berlin, Germany": "🎨 Historic and vibrant cultural hub",
+    "Rome, Italy": "🏛️ Ancient city with rich history and art",
+    "Barcelona, Spain": "🏖️ Coastal city with stunning architecture",
+    "Boston, USA": "🍀 Historic city with rich colonial heritage",
+    "New York, USA": "🗽 The city that never sleeps",
     "Tokyo, Japan": "🗾 Bustling metropolis with ancient temples",
     "Sydney, Australia": "🦘 Opera House and beautiful beaches",
-    "New York, USA": "🗽 The city that never sleeps",
     "Cairo, Egypt": "🔺 Gateway to ancient wonders",
     "Cape Town, South Africa": "🌅 Scenic beauty and Table Mountain",
     "Rio de Janeiro, Brazil": "🎭 Vibrant culture and beaches",
     "Bali, Indonesia": "🌴 Tropical paradise and spiritual haven"
+    "Paris, France": "🗼 The City of Light, romantic and iconic"
 }
 
 # Tool Function: Get weather for a location
@@ -305,7 +307,7 @@ def get_datetime() -> str:
 # Environment variables required:
 # - OPENAI_API_KEY: Your OpenAI API key
 # - MODEL_ID: Model to use (e.g., gpt-4o-mini, gpt-4o)
-model_id = os.environ.get("MODEL_ID", "gpt-4o-mini")
+model_id = os.environ.get("MODEL_ID", "gpt-5-mini")
 # openai_chat_client = OpenAIChatClient(
 #     base_url=os.environ.get("GITHUB_ENDPOINT"),
 #     api_key=os.environ.get("GITHUB_TOKEN"),
@@ -508,6 +510,7 @@ async def run_agent(user_prompt: str):
             current_span.set_attribute("destination", destination)
             current_span.set_attribute("totalTokens", tokens)
         except Exception as e:
+            print("🚨 Error planning trip:", str(e))
             logger.error(f"Error planning trip: {str(e)}")
             error_counter.add(1, {"error_type": type(e).__name__})
             return render_template('error.html', error=str(e)), 500

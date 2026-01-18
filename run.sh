@@ -85,8 +85,10 @@ export OTLP_HEADERS="api-key=$NEW_RELIC_LICENSE_KEY_AI"
 
 export GITHUB_TOKEN="$GITHUB_TOKEN"
 export GITHUB_ENDPOINT="https://models.github.ai/inference"
-#export GITHUB_MODEL_ID="gpt-4o-mini"
-#export OPENAI_CHAT_MODEL_ID="gpt-4o-mini"
+#export GITHUB_MODEL_ID="gpt-5-mini"
+#export OPENAI_CHAT_MODEL_ID="gpt-5-mini"
+export MSFT_FOUNDRY_ENDPOINT="$MSFT_FOUNDRY_ENDPOINT" # e.g., https://your-resource-name.openai.azure.com/openai/v1/
+export MSFT_FOUNDRY_API_KEY="$MSFT_FOUNDRY_API_KEY"
 
 # Run the Flask application
 python web_app.py
