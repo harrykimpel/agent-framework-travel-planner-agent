@@ -39,7 +39,7 @@ Ensure your `.env` file contains:
 
 ```bash
 OPENAI_API_KEY=your_openai_api_key
-GITHUB_MODEL_ID=gpt-4o-mini
+GITHUB_MODEL_ID=gpt-5-mini
 OTEL_SERVICE_NAME=travel-planner-web
 # Optional: for real weather data
 OPENWEATHER_API_KEY=your_weather_api_key

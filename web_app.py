@@ -389,7 +389,7 @@ def plan_trip():
             # Run the agent asynchronously
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            response = loop.run_until_complete(run_agent(user_prompt))
+            response, trace_id = loop.run_until_complete(run_agent(user_prompt))
             loop.close()
 
             # Extract the travel plan
@@ -400,11 +400,68 @@ def plan_trip():
             return render_template('result.html',
                                    travel_plan=text_content,
                                    destination=destination,
-                                   duration=duration)
+                                   duration=duration,
+                                   trace_id=trace_id)
 
         except Exception as e:
             logger.error(f"[plan_trip] error: {str(e)}")
             return render_template('error.html', error=str(e)), 500
+
+
+@app.route('/api/feedback', methods=['POST'])
+def submit_feedback():
+    """API endpoint for submitting feedback on AI-generated travel plans."""
+    try:
+        data = request.get_json()
+        trace_id = data.get('trace_id', '')
+        feedback = data.get('feedback', '')  # 'positive' or 'negative'
+        
+        if not trace_id:
+            return jsonify({
+                'success': False,
+                'error': 'trace_id is required'
+            }), 400
+        
+        if feedback not in ['positive', 'negative']:
+            return jsonify({
+                'success': False,
+                'error': 'feedback must be either "positive" or "negative"'
+            }), 400
+        
+        # Map feedback to rating (1 for positive/thumbs up, 0 for negative/thumbs down)
+        rating = 1 if feedback == 'positive' else 0
+        
+        # Log the feedback event for New Relic
+        logger.info("[llm_feedback]", extra={
+            "newrelic.event.type": "LlmFeedbackMessage",
+            "appId": 1234567890,
+            "appName": serviceName,
+            "entityGuid": newrelicEntityGuid,
+            "trace_id": trace_id,
+            "rating": rating,
+            "category": feedback,
+            "feedback_id": str(uuid.uuid4()),
+            "ingest_source": "Python",
+            "vendor": "openai",
+            "tags.aiEnabledApp": True,
+            "tags.account": newrelicAccount,
+            "tags.accountId": newrelicAccountId,
+            "tags.trustedAccountId": newrelicTrustedAccountId
+        })
+        
+        logger.info(f"[submit_feedback] Feedback submitted: {feedback} for trace_id: {trace_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Feedback submitted successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"[submit_feedback] error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 @app.route('/api/plan', methods=['POST'])
@@ -444,7 +501,7 @@ Instructions:
         # Run the agent asynchronously
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        response = loop.run_until_complete(run_agent(user_prompt))
+        response, trace_id = loop.run_until_complete(run_agent(user_prompt))
         loop.close()
 
         # Extract the travel plan
@@ -455,7 +512,8 @@ Instructions:
             'success': True,
             'travel_plan': text_content,
             'destination': destination,
-            'duration': duration
+            'duration': duration,
+            'trace_id': trace_id
         })
 
     except Exception as e:
@@ -613,7 +671,7 @@ async def run_agent(user_prompt: str):
 
     logger.info("[run_agent] agent interaction complete")
 
-    return response
+    return response, trace_id
 
 
 if __name__ == "__main__":
