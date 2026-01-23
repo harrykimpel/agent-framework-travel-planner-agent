@@ -141,6 +141,9 @@
     
     <div class="trip-summary">
         🌍 Destination: {{ destination }} | ⏱️ Duration: {{ duration }} days
+        {% if security_mode %}
+        <br><span style="font-size: 0.9em; margin-top: 5px; display: inline-block;">🔒 Security Mode: {{ security_mode }}</span>
+        {% endif %}
     </div>
     
     <div class="result-container">
