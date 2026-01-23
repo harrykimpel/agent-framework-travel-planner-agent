@@ -24,6 +24,28 @@ The Travel Planner has been converted from a CLI application to a beautiful Flas
 - `GET /` - Home page with travel planning form
 - `POST /plan` - Generate travel plan (returns HTML)
 - `POST /api/plan` - Generate travel plan (returns JSON for API consumers)
+- `GET /attacks` - Security demonstration: attack examples page
+- `POST /plan-vulnerable` - **⚠️ Demo only**: Vulnerable endpoint (no input sanitization)
+- `POST /plan-secure` - **✅ Demo only**: Secure endpoint (with input validation)
+
+### 🔒 Security Demonstration Feature
+
+**Educational Prompt Injection Vulnerability Demo**
+
+This application includes an educational security demonstration showing how prompt injection attacks work in AI systems:
+
+- **Vulnerable Mode**: Demonstrates unsafe handling of user input (direct concatenation into AI prompts)
+- **Secure Mode**: Shows proper security mitigations (input validation, sanitization, structured prompts)
+- **Attack Examples**: Pre-built attack payloads demonstrating different injection techniques
+
+**⚠️ Important**: The vulnerable endpoint is for educational purposes only and should NEVER be deployed to production.
+
+**Learn More**: See [SECURITY_DEMO.md](SECURITY_DEMO.md) for complete documentation.
+
+**Try it**:
+1. Visit the main page and select a security mode from the dropdown
+2. Try the attack examples from `/attacks` page
+3. Compare how vulnerable vs. secure modes handle malicious input
 
 ## 🚀 Quick Start
 
