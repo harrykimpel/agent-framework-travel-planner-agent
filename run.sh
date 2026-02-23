@@ -57,7 +57,7 @@ fi
 # Run the application
 echo ""
 echo "Starting Travel Agent Planner..."
-echo "📱 Open http://localhost:5000 in your browser"
+echo "📱 Open http://localhost:5002 in your browser"
 echo ""
 echo "Press Ctrl+C to stop the server"
 echo ""
