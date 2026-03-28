@@ -3,12 +3,12 @@
 import re
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry._logs import get_logger_provider, set_logger_provider
-from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.metrics import set_meter_provider
+# from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+# from opentelemetry.sdk.metrics import MeterProvider
+# from opentelemetry.metrics import set_meter_provider
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
-from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+# from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+# from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 import os
 from random import randint, uniform
 import random
@@ -63,8 +63,8 @@ app_logger.setLevel(logging.INFO)
 
 # Create OTLP exporters that will auto-read endpoint and headers from environment
 # (OTEL_EXPORTER_OTLP_ENDPOINT and OTEL_EXPORTER_OTLP_HEADERS)
-otlp_trace_exporter = OTLPSpanExporter()
-otlp_metric_exporter = OTLPMetricExporter()
+# otlp_trace_exporter = OTLPSpanExporter()
+# otlp_metric_exporter = OTLPMetricExporter()
 otlp_log_exporter = OTLPLogExporter()
 
 # setup_observability(
@@ -73,27 +73,28 @@ otlp_log_exporter = OTLPLogExporter()
 # )
 configure_otel_providers()
 tracer = get_tracer()
+meter = get_meter()
 
 # Workaround: Replace the MeterProvider with one that has proper periodic export
 # The Agent Framework doesn't configure PeriodicExportingMetricReader correctly
 
 # Create a periodic reader that exports metrics every 30 seconds
-metric_reader = PeriodicExportingMetricReader(
-    exporter=otlp_metric_exporter,
-    export_interval_millis=30000  # Export every 30 seconds
-)
+# metric_reader = PeriodicExportingMetricReader(
+#     exporter=otlp_metric_exporter,
+#     export_interval_millis=30000  # Export every 30 seconds
+# )
 
-# Create new meter provider with periodic export
-meter_provider = MeterProvider(
-    resource=resource,
-    metric_readers=[metric_reader]
-)
+# # Create new meter provider with periodic export
+# meter_provider = MeterProvider(
+#     resource=resource,
+#     metric_readers=[metric_reader]
+# )
 
-# Set the global meter provider using the proper OpenTelemetry API
-set_meter_provider(meter_provider)
+# # Set the global meter provider using the proper OpenTelemetry API
+# set_meter_provider(meter_provider)
 
-# Get meter from the properly configured provider
-meter = meter_provider.get_meter(__name__)
+# # Get meter from the properly configured provider
+# meter = meter_provider.get_meter(__name__)
 
 # Create custom counters and histograms
 request_counter = meter.create_counter(
@@ -333,7 +334,7 @@ openai_chat_client = OpenAIChatClient(
 # - instructions: System prompt that defines the agent's personality and role
 # - tools: List of functions the agent can call to perform actions
 agent = openai_chat_client.as_agent(
-    chat_client=openai_chat_client,
+
     instructions="You are a helpful AI Agent that can help plan vacations for customers at random destinations.",
     # Tool functions available to the agent
     tools=[get_selected_destination, get_weather, get_datetime]

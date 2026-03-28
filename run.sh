@@ -66,10 +66,11 @@ export OTEL_TRACES_EXPORTER=otlp
 export OTEL_METRICS_EXPORTER=otlp
 export OTEL_LOGS_EXPORTER=otlp
 # US region
-export OTEL_EXPORTER_OTLP_ENDPOINT='https://otlp.nr-data.net'
+export OTEL_EXPORTER_OTLP_ENDPOINT='https://otlp.nr-data.net:4317'
+export OTEL_EXPORTER_OTLP_LOGS_ENDPOINT='https://otlp.nr-data.net:4317/v1/logs'
 # EU region
-#export OTEL_EXPORTER_OTLP_ENDPOINT='https://otlp.eu01.nr-data.net'
-export OTEL_EXPORTER_OTLP_HEADERS="api-key=$NEW_RELIC_LICENSE_KEY_AI"
+#export OTEL_EXPORTER_OTLP_ENDPOINT='https://otlp.eu01.nr-data.net:4317'
+export OTEL_EXPORTER_OTLP_HEADERS="api-key=$NEW_RELIC_LICENSE_KEY"
 export OTEL_SERVICE_NAME="agent-travel-planner"
 
 export OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true
@@ -80,8 +81,9 @@ export OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true
 
 export ENABLE_OTEL=true
 export ENABLE_SENSITIVE_DATA=true
-export OTLP_ENDPOINT='https://otlp.nr-data.net'
-export OTLP_HEADERS="api-key=$NEW_RELIC_LICENSE_KEY_AI"
+export ENABLE_INSTRUMENTATION=true
+# export OTLP_ENDPOINT='https://otlp.nr-data.net:4317'
+# export OTLP_HEADERS="api-key=$NEW_RELIC_LICENSE_KEY"
 
 export GITHUB_TOKEN="$GITHUB_TOKEN"
 export GITHUB_ENDPOINT="https://models.github.ai/inference"
