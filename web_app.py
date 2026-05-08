@@ -43,7 +43,7 @@ from opentelemetry.trace.span import format_trace_id
 
 # 🔧 Load Environment Variables
 # This loads configuration from a .env file in the project root
-load_dotenv()
+load_dotenv(override=True)
 
 serviceName = os.environ.get("OTEL_SERVICE_NAME")
 resource = Resource.create({SERVICE_NAME: serviceName})
@@ -321,11 +321,11 @@ model_id = os.environ.get("MODEL_ID", "gpt-5-mini")
 #     api_key=os.environ.get("OPENAI_API_KEY"),
 #     model_id=model_id
 # )
-# Use Microsoft Foundry endpoint directly
+# Use Azure OpenAI's OpenAI-compatible endpoint (/openai/v1/) with API key auth
 openai_chat_client = OpenAIChatClient(
     base_url=os.environ.get("MSFT_FOUNDRY_ENDPOINT"),
     api_key=os.environ.get("MSFT_FOUNDRY_API_KEY"),
-    model_id=model_id
+    model=model_id,
 )
 
 # 🤖 Create the Travel Planning Agent
@@ -400,7 +400,7 @@ def plan_trip():
             # Extract the travel plan
             # print("🚀 Agent response received:", response)
             last_message = response.messages[-1]
-            text_content = last_message.contents[0].text
+            text_content = last_message.text
 
             # Return result as HTML
             return render_template('result.html',
@@ -513,7 +513,7 @@ def api_plan_trip():
 
         # Extract the travel plan
         last_message = response.messages[-1]
-        text_content = last_message.contents[0].text
+        text_content = last_message.text
 
         return jsonify({
             'success': True,
@@ -657,7 +657,7 @@ def plan_trip_vulnerable():
 
             # Extract the travel plan
             last_message = response.messages[-1]
-            text_content = last_message.contents[0].text
+            text_content = last_message.text
 
             # Return result as HTML
             return render_template('result.html',
@@ -755,7 +755,7 @@ def plan_trip_secure():
 
             # Extract the travel plan
             last_message = response.messages[-1]
-            text_content = last_message.contents[0].text
+            text_content = last_message.text
 
             # Return result as HTML
             return render_template('result.html',
@@ -807,7 +807,7 @@ async def run_agent(user_prompt: str):
 
             # 📖 Extract the Travel Plan
             last_message = response.messages[-1]
-            text_content = last_message.contents[0].text
+            text_content = last_message.text
 
             span_id = format(current_span.get_span_context().span_id, "016x")
             trace_id = format_trace_id(

@@ -18,7 +18,7 @@ echo "✓ Python 3 found"
 if [ ! -d ".venv" ]; then
     echo ""
     echo "Creating virtual environment..."
-    python3 -m venv .venv
+    python -m venv .venv
     echo "✓ Virtual environment created"
 fi
 
@@ -85,12 +85,12 @@ export ENABLE_INSTRUMENTATION=true
 # export OTLP_ENDPOINT='https://otlp.nr-data.net:4317'
 # export OTLP_HEADERS="api-key=$NEW_RELIC_LICENSE_KEY"
 
-export GITHUB_TOKEN="$GITHUB_TOKEN"
-export GITHUB_ENDPOINT="https://models.github.ai/inference"
+#export GITHUB_TOKEN="$GITHUB_TOKEN"
+#export GITHUB_ENDPOINT="https://models.github.ai/inference"
 #export GITHUB_MODEL_ID="gpt-5-mini"
 #export OPENAI_CHAT_MODEL_ID="gpt-5-mini"
-export MSFT_FOUNDRY_ENDPOINT="$MSFT_FOUNDRY_ENDPOINT" # e.g., https://your-resource-name.openai.azure.com/openai/v1/
-export MSFT_FOUNDRY_API_KEY="$MSFT_FOUNDRY_API_KEY"
+#export MSFT_FOUNDRY_ENDPOINT="$MSFT_FOUNDRY_ENDPOINT" # e.g., https://your-resource-name.openai.azure.com/openai/v1/
+#export MSFT_FOUNDRY_API_KEY="$MSFT_FOUNDRY_API_KEY"
 
 # Run the Flask application
 python web_app.py

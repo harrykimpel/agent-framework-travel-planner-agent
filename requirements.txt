@@ -1,4 +1,5 @@
 agent-framework-core
+agent-framework-openai
 flask
 flask-cors
 requests
