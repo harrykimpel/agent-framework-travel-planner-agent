@@ -70,7 +70,7 @@ export OTEL_EXPORTER_OTLP_ENDPOINT='https://otlp.nr-data.net:4317'
 export OTEL_EXPORTER_OTLP_LOGS_ENDPOINT='https://otlp.nr-data.net:4317/v1/logs'
 # EU region
 #export OTEL_EXPORTER_OTLP_ENDPOINT='https://otlp.eu01.nr-data.net:4317'
-export OTEL_EXPORTER_OTLP_HEADERS="api-key=$NEW_RELIC_LICENSE_KEY"
+#export OTEL_EXPORTER_OTLP_HEADERS="api-key=$NEW_RELIC_LICENSE_KEY"
 export OTEL_SERVICE_NAME="agent-travel-planner"
 
 export OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true
